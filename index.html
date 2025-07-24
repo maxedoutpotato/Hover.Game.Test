@@ -213,6 +213,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- Add DRACOLoader.js for compressed models -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 
     <script>
         // --- Global Variables ---
@@ -295,11 +297,15 @@
             });
             world.addContactMaterial(playerWallContact);
 
-            // Add lighting
-            const ambientLight = new THREE.AmbientLight(0x404040); // Soft white light
+            // Add lighting - Increased intensities and added HemisphereLight
+            const ambientLight = new THREE.AmbientLight(0x404040, 2); // Increased intensity
             scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // White directional light
-            directionalLight.position.set(1, 1, 1).normalize();
+
+            const hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.5); // Sky color, ground color, intensity
+            scene.add(hemisphereLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); // Increased intensity
+            directionalLight.position.set(5, 10, 5).normalize(); // Adjusted position for better illumination
             scene.add(directionalLight);
 
             // Load Ship and Track
@@ -346,12 +352,30 @@
         function loadModels(playerMaterial, groundMaterial, wallMaterial) {
             const loader = new THREE.GLTFLoader();
 
+            // Setup DRACOLoader
+            const dracoLoader = new THREE.DRACOLoader();
+            dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/'); // Path to Draco decoder files
+            loader.setDRACOLoader(dracoLoader);
+
+            // Define a temporary, bright material for debugging visibility
+            const debugMaterial = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
+            // Or a simple bright standard material:
+            // const debugMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.5 });
+
+
             // Load Ship Model
             loader.load(
                 'https://maxedoutpotato.github.io/Hover.Game.Test/Game.Ship.glb', // Updated to GitHub Pages URL
                 (gltf) => {
                     playerMesh = gltf.scene;
                     playerMesh.scale.set(0.5, 0.5, 0.5); // Adjust scale as needed
+                    
+                    // Apply debug material to all meshes in the ship model
+                    playerMesh.traverse((node) => {
+                        if (node.isMesh) {
+                            node.material = debugMaterial;
+                        }
+                    });
                     scene.add(playerMesh);
 
                     // Setup Animation Mixer
@@ -390,15 +414,9 @@
                 (gltf) => {
                     const baseTrackSegmentMesh = gltf.scene;
                     baseTrackSegmentMesh.traverse((node) => {
-                        // Apply cartoon shader logic here if needed
+                        // Apply debug material to all meshes in the track segment
                         if (node.isMesh) {
-                            // Example: apply simple material or modify existing
-                            // For toon shading, you'd replace node.material with a custom shader
-                            if (Array.isArray(node.material)) {
-                                node.material.forEach(mat => mat.side = THREE.DoubleSide);
-                            } else {
-                                node.material.side = THREE.DoubleSide;
-                            }
+                            node.material = debugMaterial;
                         }
                     });
 
@@ -700,3 +718,4 @@
     </script>
 </body>
 </html>
+
