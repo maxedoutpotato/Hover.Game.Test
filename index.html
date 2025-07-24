@@ -271,7 +271,7 @@
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             // Adjusted camera position to be closer to origin for potentially tiny models
-            camera.position.set(0, 50, -300); // Significantly pulled back and up
+            camera.position.set(0, 10, -30); // Reset to a more standard view
 
             renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); // Use the globally defined canvas
             renderer.setSize(canvas.offsetWidth, canvas.offsetHeight); // Use the globally defined canvas
@@ -368,8 +368,14 @@
         // Now accepts the pre-configured loader
         function loadModels(playerMaterial, groundMaterial, wallMaterial, loader) {
             // Define a temporary, bright material for debugging visibility
-            const debugMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide }); // Bright green, unlit
-            console.log("Debug material created:", debugMaterial);
+            // Reverting to original material or a simple PBR material for now
+            const defaultMaterial = new THREE.MeshStandardMaterial({
+                color: 0x888888, // Neutral gray
+                metalness: 0.7,
+                roughness: 0.3,
+                side: THREE.DoubleSide
+            });
+            console.log("Default material for models created:", defaultMaterial);
 
 
             // Load Ship Model
@@ -377,16 +383,17 @@
                 'https://maxedoutpotato.github.io/Hover.Game.Test/Game.Ship.glb', // Updated to GitHub Pages URL
                 (gltf) => {
                     playerMesh = gltf.scene;
-                    // TEMPORARY: Make ship much larger to ensure visibility
-                    const scaleFactor = 200; // Even larger scale
+                    // Reset scale to 1 (original Blender units)
+                    const scaleFactor = 1; 
                     playerMesh.scale.set(scaleFactor, scaleFactor, scaleFactor); 
                     console.log("Ship scale set to:", playerMesh.scale.x);
                     
-                    // Apply debug material to all meshes in the ship model
+                    // Apply default material to all meshes in the ship model (or use gltf.scene.children[0].material if it has one)
                     playerMesh.traverse((node) => {
                         if (node.isMesh) {
-                            node.material = debugMaterial;
-                            console.log("Applied debug material to ship mesh:", node.name);
+                            // Use the loaded material if available, otherwise apply a default
+                            node.material = node.material || defaultMaterial; 
+                            console.log("Applied material to ship mesh:", node.name);
                         }
                     });
                     scene.add(playerMesh);
@@ -409,9 +416,8 @@
 
                     // Cannon.js player body - adjusted for Manta Ray shape
                     // Approximate with a box for simplicity, adjust half extents
-                    // These dimensions should match your Blender model's dimensions *before* scaling, then multiplied by scaleFactor
-                    // Assuming original dimensions were roughly 5 units wide, 1 unit high, 8 units deep for the main body
-                    const originalShipWidth = 5;
+                    // These dimensions should match your Blender model's dimensions *before* scaling
+                    const originalShipWidth = 5; // Assuming original dimensions from Blender
                     const originalShipHeight = 1;
                     const originalShipDepth = 8;
 
@@ -423,7 +429,7 @@
                     playerBody = new CANNON.Body({ mass: 5, material: playerMaterial });
                     playerBody.addShape(playerShape);
                     // Start position adjusted for new scale and hover height
-                    playerBody.position.set(0, hoverHeight * scaleFactor + originalShipHeight / 2 * scaleFactor, 0); 
+                    playerBody.position.set(0, hoverHeight + originalShipHeight / 2, 0); 
                     console.log("Player physics body created and added to world.");
                     console.log("Player body initial position:", playerBody.position.x, playerBody.position.y, playerBody.position.z);
                     world.addBody(playerBody);
@@ -443,17 +449,17 @@
                 (gltf) => {
                     const baseTrackSegmentMesh = gltf.scene;
                     baseTrackSegmentMesh.traverse((node) => {
-                        // Apply debug material to all meshes in the track segment
+                        // Apply default material to all meshes in the track segment
                         if (node.isMesh) {
-                            node.material = debugMaterial;
-                            console.log("Applied debug material to track mesh:", node.name);
+                            node.material = node.material || defaultMaterial;
+                            console.log("Applied material to track mesh:", node.name);
                         }
                     });
 
                     // Create a straight path for duplication
                     const pathPoints = [];
-                    // Scale track segment length for path generation as well
-                    const scaledTrackSegmentLength = trackSegmentLength * 200; // Match visual scale
+                    // Use original track segment length for path generation
+                    const scaledTrackSegmentLength = trackSegmentLength; // Revert to original scale
                     for (let i = 0; i <= numberOfSegments; i++) {
                         pathPoints.push(new THREE.Vector3(0, 0, i * scaledTrackSegmentLength)); 
                     }
@@ -462,7 +468,7 @@
                     // Duplicate track segments
                     for (let i = 0; i < numberOfSegments; i++) {
                         const segmentMesh = baseTrackSegmentMesh.clone();
-                        const scaleFactor = 200; // Match player scale
+                        const scaleFactor = 1; // Revert to original scale
                         segmentMesh.scale.set(scaleFactor, scaleFactor, scaleFactor); 
                         console.log("Track segment scale set to:", segmentMesh.scale.x);
 
@@ -487,11 +493,11 @@
                         // Assuming your segment is centered at origin and has width/length for simple box colliders
                         const segmentBody = new CANNON.Body({ mass: 0 }); // Static body
 
-                        // Scale physics dimensions with visual model
-                        const scaledTrackWidth = trackWidth * scaleFactor;
-                        const scaledTrackHeight = trackHeight * scaleFactor;
-                        const scaledWallThickness = wallThickness * scaleFactor;
-                        const scaledWallHeight = wallHeight * scaleFactor;
+                        // Use original physics dimensions
+                        const scaledTrackWidth = trackWidth;
+                        const scaledTrackHeight = trackHeight;
+                        const scaledWallThickness = wallThickness;
+                        const scaledWallHeight = wallHeight;
 
                         // Track Ground (flat part)
                         const groundShape = new CANNON.Box(new CANNON.Vec3(scaledTrackWidth, scaledTrackHeight / 2, scaledTrackSegmentLength / 2)); 
@@ -554,9 +560,9 @@
 
             // Reset player position and velocity
             if (playerBody) {
-                const scaleFactor = 200;
+                const scaleFactor = 1; // Original scale
                 const originalShipHeight = 1; // Assuming original height from Blender
-                playerBody.position.set(0, hoverHeight * scaleFactor + originalShipHeight / 2 * scaleFactor, 0); 
+                playerBody.position.set(0, hoverHeight + originalShipHeight / 2, 0); 
                 playerBody.velocity.set(0, 0, 0);
                 playerBody.angularVelocity.set(0, 0, 0);
                 playerBody.quaternion.set(0, 0, 0, 1);
@@ -614,12 +620,12 @@
             const rayFrom = playerBody.position;
             const rayTo = new CANNON.Vec3();
             // Ray length should also be scaled
-            rayFrom.vadd(new CANNON.Vec3(0, -hoverHeight * 200 - 100, 0), rayTo); // Ray goes downwards, scaled length
+            rayFrom.vadd(new CANNON.Vec3(0, -hoverHeight - 10, 0), rayTo); // Ray goes downwards, original length
 
             world.raycastAny(rayFrom, rayTo, (result) => {
                 if (result.hasHit) {
                     const distance = rayFrom.distanceTo(result.hitPoint);
-                    const heightDifference = hoverHeight * 200 - distance; // Scaled hover height
+                    const heightDifference = hoverHeight - distance; // Original hover height
 
                     // Apply proportional force to correct height and dampen vertical velocity
                     const hoverForceMagnitude = heightDifference * hoverStrength - playerBody.velocity.y * hoverDamping;
@@ -634,7 +640,7 @@
                     // playerBody.quaternion.slerp(targetQuaternion, 0.1);
                 } else {
                     // If no ground hit, apply a stronger downward force (gravity helper)
-                    playerBody.applyLocalForce(new CANNON.Vec3(0, -500, 0), playerBody.position); // Use local force
+                    playerBody.applyLocalForce(new CANNON.Vec3(0, -50, 0), playerBody.position); // Use local force, original strength
                 }
             });
 
@@ -648,13 +654,13 @@
 
             if (keys['w'] || keys['arrowup']) {
                 playerBody.applyLocalForce(
-                    new CANNON.Vec3(0, 0, acceleration * 10 * 200), // Scaled force
+                    new CANNON.Vec3(0, 0, acceleration * 10), // Original force
                     new CANNON.Vec3(0, 0, 0)
                 );
             }
             if (keys['s'] || keys['arrowdown']) {
                 playerBody.applyLocalForce(
-                    new CANNON.Vec3(0, 0, -brakingForce * 10 * 200), // Scaled force
+                    new CANNON.Vec3(0, 0, -brakingForce * 10), // Original force
                     new CANNON.Vec3(0, 0, 0)
                 );
             }
@@ -671,15 +677,15 @@
 
             // Limit player speed
             const velocityMagnitude = playerBody.velocity.length();
-            const scaledMaxSpeed = maxSpeed * 200; // Scale max speed
+            const scaledMaxSpeed = maxSpeed; // Original max speed
             if (velocityMagnitude > scaledMaxSpeed) {
                 playerBody.velocity.normalize();
                 playerBody.velocity.scale(scaledMaxSpeed, playerBody.velocity);
             }
 
             // Update speed display (convert back to original units for display)
-            speedDisplay.textContent = Math.round(velocityMagnitude * 3.6 / 200); // Convert m/s to km/h, then unscale
-
+            speedDisplay.textContent = Math.round(velocityMagnitude * 3.6); // Original display
+            
             // Ship Animations (placeholder logic)
             if (mixer) {
                 mixer.update(deltaTime); // Update animations with delta time
@@ -698,7 +704,7 @@
             }
 
             // End game if player falls off far below track
-            if (playerBody.position.y < -50 * 200) { // Scaled fall-off point
+            if (playerBody.position.y < -50) { // Original fall-off point
                 endGame();
             }
         }
@@ -711,7 +717,7 @@
 
             // Camera follow behind and slightly above
             // This offset needs to be a THREE.Vector3 for applyQuaternion
-            const relativeCameraOffset = new THREE.Vector3(0, 5 * 200, -15 * 200); // X, Y (height), Z (distance behind), scaled
+            const relativeCameraOffset = new THREE.Vector3(0, 5, -15); // Original offset
 
             // Apply player's rotation (THREE.Quaternion from playerMesh) to the offset to get world coordinates
             const cameraOffset = relativeCameraOffset.applyQuaternion(playerMesh.quaternion);
@@ -720,7 +726,7 @@
             camera.position.copy(playerPos).add(cameraOffset);
 
             // Make camera look at the player
-            camera.lookAt(playerPos.x, playerPos.y + 2 * 200, playerPos.z); // Scaled look-at
+            camera.lookAt(playerPos.x, playerPos.y + 2, playerPos.z); // Original look-at
         }
 
 
