@@ -206,7 +206,8 @@
     </div>
 
     <audio id="backgroundMusic" loop>
-        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.3.mp3" type="audio/mpeg">
+        <!-- Updated to a different SoundHelix song that is usually reliable -->
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
 
@@ -308,6 +309,11 @@
             directionalLight.position.set(5, 10, 5).normalize(); // Adjusted position for better illumination
             scene.add(directionalLight);
 
+            // Add AxesHelper for debugging scene origin
+            const axesHelper = new THREE.AxesHelper(50); // Size of the axes
+            scene.add(axesHelper);
+            console.log("AxesHelper added to scene.");
+
             // Load Ship and Track
             // Initialize loader and dracoLoader here, and pass them to loadModels
             const loader = new THREE.GLTFLoader();
@@ -362,8 +368,7 @@
         function loadModels(playerMaterial, groundMaterial, wallMaterial, loader) {
             // Define a temporary, bright material for debugging visibility
             const debugMaterial = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
-            // Or a simple bright standard material:
-            // const debugMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.5 });
+            console.log("Debug material created:", debugMaterial);
 
 
             // Load Ship Model
@@ -371,15 +376,19 @@
                 'https://maxedoutpotato.github.io/Hover.Game.Test/Game.Ship.glb', // Updated to GitHub Pages URL
                 (gltf) => {
                     playerMesh = gltf.scene;
-                    playerMesh.scale.set(0.5, 0.5, 0.5); // Adjust scale as needed
+                    // TEMPORARY: Make ship much larger to ensure visibility
+                    playerMesh.scale.set(5, 5, 5); // Adjust scale as needed
                     
                     // Apply debug material to all meshes in the ship model
                     playerMesh.traverse((node) => {
                         if (node.isMesh) {
                             node.material = debugMaterial;
+                            console.log("Applied debug material to ship mesh:", node.name);
                         }
                     });
                     scene.add(playerMesh);
+                    console.log("Ship model added to scene:", playerMesh);
+
 
                     // Setup Animation Mixer
                     mixer = new THREE.AnimationMixer(playerMesh);
@@ -389,6 +398,7 @@
                         // Play idle animation by default
                         if (clip.name === 'Idle') { // Assuming your idle animation is named 'Idle'
                             action.play();
+                            console.log("Playing Idle animation.");
                         } else {
                             action.setEffectiveWeight(0); // Start other animations at zero influence
                         }
@@ -396,11 +406,12 @@
 
                     // Cannon.js player body - adjusted for Manta Ray shape
                     // Approximate with a box for simplicity, adjust half extents
-                    const playerShape = new CANNON.Box(new CANNON.Vec3(2.5 * 0.5, 0.5 * 0.5, 4 * 0.5)); // Width, Height, Depth (scaled)
+                    const playerShape = new CANNON.Box(new CANNON.Vec3(2.5 * 0.5 * 5, 0.5 * 0.5 * 5, 4 * 0.5 * 5)); // Scaled with visual mesh
                     playerBody = new CANNON.Body({ mass: 5, material: playerMaterial });
                     playerBody.addShape(playerShape);
-                    playerBody.position.set(0, hoverHeight + 0.5, 0); // Start slightly above ground
+                    playerBody.position.set(0, hoverHeight + 0.5 + (5 * 0.5 * 5), 0); // Start slightly above ground, adjusted for scale
                     world.addBody(playerBody);
+                    console.log("Player physics body created and added to world.");
                 },
                 (xhr) => {
                     console.log('Ship model ' + (xhr.loaded / xhr.total * 100) + '% loaded');
@@ -420,6 +431,7 @@
                         // Apply debug material to all meshes in the track segment
                         if (node.isMesh) {
                             node.material = debugMaterial;
+                            console.log("Applied debug material to track mesh:", node.name);
                         }
                     });
 
@@ -433,6 +445,7 @@
                     // Duplicate track segments
                     for (let i = 0; i < numberOfSegments; i++) {
                         const segmentMesh = baseTrackSegmentMesh.clone();
+                        segmentMesh.scale.set(5, 5, 5); // TEMPORARY: Make track segments larger
 
                         // Calculate position and orientation along the path
                         const t = i / (numberOfSegments - 1);
@@ -449,31 +462,33 @@
 
                         scene.add(segmentMesh);
                         trackSegments.push(segmentMesh);
+                        console.log(`Track segment ${i} added to scene.`);
 
                         // Create Cannon.js physics bodies for each segment
                         // Assuming your segment is centered at origin and has width/length for simple box colliders
                         const segmentBody = new CANNON.Body({ mass: 0 }); // Static body
 
                         // Track Ground (flat part)
-                        const groundShape = new CANNON.Box(new CANNON.Vec3(trackWidth, trackHeight / 2, trackSegmentLength / 2));
-                        const groundOffset = new CANNON.Vec3(0, -trackHeight / 2, 0);
+                        const groundShape = new CANNON.Box(new CANNON.Vec3(trackWidth * 5, trackHeight / 2 * 5, trackSegmentLength / 2 * 5)); // Scaled
+                        const groundOffset = new CANNON.Vec3(0, -trackHeight / 2 * 5, 0); // Scaled
                         segmentBody.addShape(groundShape, groundOffset);
 
                         // Left Wall (sloped edge) - simplified as a box for now, adjust position/rotation later for 30-45 deg
-                        const leftWallShape = new CANNON.Box(new CANNON.Vec3(wallThickness / 2, wallHeight / 2, trackSegmentLength / 2));
-                        const leftWallOffset = new CANNON.Vec3(-(trackWidth - wallThickness / 2), wallHeight / 2, 0); // Position to the left
+                        const leftWallShape = new CANNON.Box(new CANNON.Vec3(wallThickness / 2 * 5, wallHeight / 2 * 5, trackSegmentLength / 2 * 5)); // Scaled
+                        const leftWallOffset = new CANNON.Vec3(-(trackWidth - wallThickness / 2) * 5, wallHeight / 2 * 5, 0); // Scaled
                         segmentBody.addShape(leftWallShape, leftWallOffset);
 
 
                         // Right Wall (sloped edge)
-                        const rightWallShape = new CANNON.Box(new CANNON.Vec3(wallThickness / 2, wallHeight / 2, trackSegmentLength / 2));
-                        const rightWallOffset = new CANNON.Vec3(trackWidth - wallThickness / 2, wallHeight / 2, 0); // Position to the right
+                        const rightWallShape = new CANNON.Box(new CANNON.Vec3(wallThickness / 2 * 5, wallHeight / 2 * 5, trackSegmentLength / 2 * 5)); // Scaled
+                        const rightWallOffset = new CANNON.Vec3((trackWidth - wallThickness / 2) * 5, wallHeight / 2 * 5, 0); // Scaled
                         segmentBody.addShape(rightWallShape, rightWallOffset);
 
 
                         segmentBody.position.copy(position);
                         segmentBody.quaternion.copy(orientation);
                         world.addBody(segmentBody);
+                        console.log(`Track segment ${i} physics body created.`);
                     }
                 },
                 (xhr) => {
@@ -514,7 +529,7 @@
 
             // Reset player position and velocity
             if (playerBody) {
-                playerBody.position.set(0, hoverHeight + 0.5, 0);
+                playerBody.position.set(0, hoverHeight + 0.5 + (5 * 0.5 * 5), 0); // Adjusted for new scale
                 playerBody.velocity.set(0, 0, 0);
                 playerBody.angularVelocity.set(0, 0, 0);
                 playerBody.quaternion.set(0, 0, 0, 1);
