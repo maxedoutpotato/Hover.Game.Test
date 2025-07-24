@@ -634,13 +634,17 @@
                     // playerBody.quaternion.slerp(targetQuaternion, 0.1);
                 } else {
                     // If no ground hit, apply a stronger downward force (gravity helper)
-                    playerBody.applyForce(new CANNON.Vec3(0, -500, 0), playerBody.position); // Increased gravity helper
+                    playerBody.applyLocalForce(new CANNON.Vec3(0, -500, 0), playerBody.position); // Use local force
                 }
             });
 
             // Apply Thrust (forward/backward)
-            const forwardVector = new CANNON.Vec3(0, 0, 1).applyQuaternion(playerBody.quaternion); // Ship's local Z-axis
-            const currentSpeed = playerBody.velocity.dot(forwardVector);
+            // Corrected: Use Cannon.js's vmult to apply quaternion to vector
+            const localForward = new CANNON.Vec3(0, 0, 1);
+            const worldForward = new CANNON.Vec3();
+            playerBody.quaternion.vmult(localForward, worldForward); // Apply player's orientation to local forward vector
+
+            const currentSpeed = playerBody.velocity.dot(worldForward); // Use worldForward for dot product
 
             if (keys['w'] || keys['arrowup']) {
                 playerBody.applyLocalForce(
@@ -706,9 +710,10 @@
             const playerQuat = playerBody.quaternion;
 
             // Camera follow behind and slightly above
+            // This offset needs to be a THREE.Vector3 for applyQuaternion
             const relativeCameraOffset = new THREE.Vector3(0, 5 * 200, -15 * 200); // X, Y (height), Z (distance behind), scaled
 
-            // Apply player's rotation to the offset to get world coordinates
+            // Apply player's rotation (THREE.Quaternion from playerMesh) to the offset to get world coordinates
             const cameraOffset = relativeCameraOffset.applyQuaternion(playerMesh.quaternion);
 
             // Set camera position
@@ -751,8 +756,9 @@
                 }
 
                 // Update camera position and look-at
-                camera.lookAt(playerBody.position.x, playerBody.position.y + 2 * 200, playerBody.position.z); // Always look at player, scaled
-                updateCamera(); // Update camera position relative to player
+                // The camera.lookAt line here was also causing issues by being called before updateCamera
+                // and potentially mixing types. Moved it into updateCamera.
+                updateCamera(); 
             }
 
             // Render the scene
