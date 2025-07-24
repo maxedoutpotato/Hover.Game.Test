@@ -206,7 +206,7 @@
     </div>
 
     <audio id="backgroundMusic" loop>
-        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.3.mp3" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
 
@@ -309,7 +309,16 @@
             scene.add(directionalLight);
 
             // Load Ship and Track
-            loadModels(playerMaterial, groundMaterial, wallMaterial);
+            // Initialize loader and dracoLoader here, and pass them to loadModels
+            const loader = new THREE.GLTFLoader();
+            const dracoLoader = new THREE.DRACOLoader();
+            dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/'); // Path to Draco decoder files
+            loader.setDRACOLoader(dracoLoader);
+            console.log('DRACOLoader and GLTFLoader initialized and linked.');
+            console.log('DRACOLoader instance:', dracoLoader);
+            console.log('GLTFLoader instance:', loader);
+
+            loadModels(playerMaterial, groundMaterial, wallMaterial, loader); // Pass the configured loader
 
             // Get background music element
             backgroundMusic = document.getElementById('backgroundMusic');
@@ -349,14 +358,8 @@
         }
 
         // --- Model Loading ---
-        function loadModels(playerMaterial, groundMaterial, wallMaterial) {
-            const loader = new THREE.GLTFLoader();
-
-            // Setup DRACOLoader
-            const dracoLoader = new THREE.DRACOLoader();
-            dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/'); // Path to Draco decoder files
-            loader.setDRACOLoader(dracoLoader);
-
+        // Now accepts the pre-configured loader
+        function loadModels(playerMaterial, groundMaterial, wallMaterial, loader) {
             // Define a temporary, bright material for debugging visibility
             const debugMaterial = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
             // Or a simple bright standard material:
