@@ -148,9 +148,8 @@
 
                     // Position the camera behind the ship
                     // The camera is placed relative to the ship's position and orientation.
-                    // Adjust these values (x, y, z offsets) to get the desired camera angle.
-                    // For example, -5 on Z means 5 units behind the ship in its local Z-axis.
-                    camera.position.set(ship.position.x, ship.position.y + 2, ship.position.z - 5);
+                    // Adjusted the Z-offset to move the camera further back.
+                    camera.position.set(ship.position.x, ship.position.y + 2, ship.position.z - 15); // Moved camera further back
                     camera.lookAt(ship.position); // Make the camera look at the ship
                 },
                 undefined, // Progress callback (handled by loadingManager)
