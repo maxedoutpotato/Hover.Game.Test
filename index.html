@@ -11,10 +11,11 @@
 </head>
 <body>
     <script type="module">
-        // Import necessary modules from Skypack
-        import * as THREE from 'https://cdn.skypack.dev/three';
-        import { GLTFLoader } from 'https://cdn.skypack.dev/three/examples/jsm/loaders/GLTFLoader.js';
-        import { DRACOLoader } from 'https://cdn.skypack.dev/three/examples/jsm/loaders/DRACOLoader.js';
+        // Import necessary modules from Skypack for Three.js core
+        import * as THREE from 'https://cdn.skypack.dev/three@0.158.0'; // Using a specific stable version of Three.js
+        // Import GLTFLoader and DRACOLoader from unpkg for better stability
+        import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/DRACOLoader.js';
 
         let scene, camera, renderer;
         let ship, track;
@@ -70,6 +71,7 @@
             // DRACOLoader setup for compressed models
             const dracoLoader = new DRACOLoader();
             // Set the path to the DRACO decoder files. These are typically hosted on a CDN.
+            // Ensure this path is correct for the DRACO version compatible with your Three.js version
             dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
             loader.setDRACOLoader(dracoLoader);
 
