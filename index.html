@@ -229,9 +229,9 @@
             scene.background = new THREE.Color(0x000000); 
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            // Fixed camera position for debugging single segment
-            camera.position.set(0, 1.5, 3.5); // Positioned behind the ship, slightly up
-            camera.lookAt(0, 0.5, 0); // Look at the general area of the ship
+            // Fixed camera position for debugging visibility
+            camera.position.set(0, 10, -30); // Wide view to capture potentially large/misplaced models
+            camera.lookAt(0, 0, 0); // Look at the origin
 
             renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); 
             renderer.setSize(canvas.offsetWidth, canvas.offsetHeight); 
@@ -257,6 +257,20 @@
             loader.setDRACOLoader(dracoLoader);
             console.log('DRACOLoader and GLTFLoader initialized and linked.');
 
+            // Add lighting (important for MeshNormalMaterial to show colors)
+            const ambientLight = new THREE.AmbientLight(0x404040, 2); 
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); 
+            directionalLight.position.set(5, 10, 5).normalize(); 
+            scene.add(directionalLight);
+            const hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.5); 
+            scene.add(hemisphereLight);
+
+            // Add AxesHelper for debugging scene origin and orientation
+            const axesHelper = new THREE.AxesHelper(50); // Larger axes to be easily visible
+            scene.add(axesHelper);
+            console.log("AxesHelper added to scene.");
+
             // Load Ship and Track models
             loadModels(loader);
 
@@ -271,31 +285,29 @@
         }
 
         function loadModels(loader) {
-            const defaultMaterial = new THREE.MeshStandardMaterial({
-                color: 0x888888, // Neutral gray
-                metalness: 0.7,
-                roughness: 0.3,
-                side: THREE.DoubleSide
-            });
+            // Use MeshNormalMaterial for debugging visibility
+            const debugMaterial = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
+            console.log("Debug material (MeshNormalMaterial) created.");
 
             // Load Ship Model
             loader.load(
                 'https://maxedoutpotato.github.io/Hover.Game.Test/Game.Ship.glb', 
                 (gltf) => {
                     playerMesh = gltf.scene;
-                    playerMesh.scale.set(1, 1, 1); // Original scale
+                    playerMesh.scale.set(50, 50, 50); // Aggressive scaling for visibility
                     
                     playerMesh.traverse((node) => {
                         if (node.isMesh) {
-                            node.material = node.material || defaultMaterial; 
+                            node.material = debugMaterial; // Apply debug material
                         }
                     });
                     scene.add(playerMesh);
                     console.log("Ship model added to scene:", playerMesh);
 
                     // Position the ship relative to the origin for observation
-                    playerMesh.position.set(0, hoverHeight + 0.5, 0); // Place on top of the track segment
-                    // No rotation applied here, relying on Blender's +Y Up export
+                    // No explicit position or rotation here to see raw import
+                    // playerMesh.position.set(0, hoverHeight + 0.5, 0); 
+                    // playerMesh.rotation.y = Math.PI; 
 
                     // Setup Animation Mixer (animations will play but won't be controlled by input)
                     mixer = new THREE.AnimationMixer(playerMesh);
@@ -318,18 +330,18 @@
                 'https://maxedoutpotato.github.io/Hover.Game.Test/Game.Track.Section.001.glb', 
                 (gltf) => {
                     const segmentMesh = gltf.scene; // No clone needed for single segment
-                    segmentMesh.scale.set(1, 1, 1); // Original scale
+                    segmentMesh.scale.set(50, 50, 50); // Aggressive scaling for visibility
                     
                     segmentMesh.traverse((node) => {
                         if (node.isMesh) {
-                            node.material = node.material || defaultMaterial;
+                            node.material = debugMaterial; // Apply debug material
                         }
                     });
 
                     // Add single segment to scene at origin
                     scene.add(segmentMesh); 
                     console.log("Single track segment added to scene:", segmentMesh);
-                    // No rotation applied here, relying on Blender's +Y Up export
+                    // No explicit position or rotation here to see raw import
                 },
                 (xhr) => { console.log('Track model ' + (xhr.loaded / xhr.total * 100) + '% loaded'); },
                 (error) => { console.error('An error occurred loading the track segment model:', error); }
