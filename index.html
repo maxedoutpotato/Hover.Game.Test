@@ -55,7 +55,7 @@
     <script type="module">
         // Global variables for scene, camera, renderer, and models
         let scene, camera, renderer;
-        let ship, track;
+        let ship;
         let mixer; // For animations (if any in GLB)
 
         // Loading manager to track asset loading progress
@@ -154,7 +154,7 @@
                 function (gltf) {
                     ship = gltf.scene;
                     // Scale the ship 10 times larger
-                    ship.scale.set(1.0, 1.0, 1.0); // Adjusted from 0.1 to 1.0
+                    ship.scale.set(1.0, 1.0, 1.0);
                     ship.position.set(0, 0.5, 0); // Initial position relative to track
                     // Rotate the ship 180 degrees around the Y-axis
                     ship.rotation.y = Math.PI;
@@ -168,7 +168,7 @@
                         if (idleClip) {
                             mixer.clipAction(idleClip).play();
                         } else {
-                            console.warn("Animation 'Armature.Idle' not found.");
+                            console.warn("Animation 'Armature.Idle' not found. Playing first available animation.");
                             // Fallback: play the first animation if idle not found
                             if (gltf.animations.length > 0) {
                                 mixer.clipAction(gltf.animations[0]).play();
@@ -178,10 +178,11 @@
 
                     // Position the camera behind the ship
                     // The camera's position is relative to the ship, so it follows the ship
-                    // Adjust these values to get the desired camera angle and distance
-                    // Moved camera even closer (from 3.5 to 0.35) and lower (from +2 to +0.5)
-                    camera.position.set(ship.position.x, ship.position.y + 0.5, ship.position.z + 0.35);
-                    camera.lookAt(ship.position); // Make the camera look at the ship
+                    // Adjusted camera Y position to be lower (from +0.5 to +0.1)
+                    // Adjusted camera Z position to be 2 times back (from +0.35 to +0.7)
+                    camera.position.set(ship.position.x, ship.position.y + 0.1, ship.position.z + 0.7);
+                    // Make the camera look slightly upwards relative to its lower position
+                    camera.lookAt(ship.position.x, ship.position.y + 0.5, ship.position.z);
                 },
                 undefined, // onProgress callback (handled by LoadingManager)
                 function (error) {
@@ -189,14 +190,27 @@
                 }
             );
 
-            // Load the track model
+            // Load the track model and duplicate it
             gltfLoader.load(
                 'Game.Track.Section.001.glb',
                 function (gltf) {
-                    track = gltf.scene;
-                    track.scale.set(1, 1, 1); // Adjust scale as needed
-                    track.position.set(0, 0, 0); // Place track at origin
-                    scene.add(track);
+                    const singleTrackSegment = gltf.scene;
+                    singleTrackSegment.scale.set(1, 1, 1); // Ensure correct scale for the base segment
+
+                    // Calculate bounding box to get depth (length) of the track segment
+                    // This is crucial for correctly spacing the duplicates
+                    const bbox = new THREE.Box3().setFromObject(singleTrackSegment);
+                    const trackDepth = bbox.max.z - bbox.min.z;
+                    console.log("Calculated Track segment depth:", trackDepth);
+
+                    const numberOfSegments = 10;
+                    for (let i = 0; i < numberOfSegments; i++) {
+                        const clonedTrack = singleTrackSegment.clone(); // Clone the original track
+                        // Position each segment along the negative Z-axis to extend the track backward
+                        // We multiply by 'i' to place them consecutively
+                        clonedTrack.position.set(0, 0, -i * trackDepth);
+                        scene.add(clonedTrack);
+                    }
                 },
                 undefined, // onProgress callback (handled by LoadingManager)
                 function (error) {
@@ -216,17 +230,16 @@
                 mixer.update(delta);
             }
 
-            // Optional: Simple ship movement for testing (remove later for actual game logic)
+            // Keep camera behind the ship
+            // This ensures the camera follows the ship's movement
             if (ship) {
-                // Example: make the ship slowly move forward
-                // ship.position.z -= 0.05;
-
-                // Keep camera behind the ship
-                // This ensures the camera follows the ship's movement
+                // Adjusted camera Y position to be lower (from +0.5 to +0.1)
+                // Adjusted camera Z position to be 2 times back (from +0.35 to +0.7)
                 camera.position.x = ship.position.x;
-                camera.position.y = ship.position.y + 0.5; // Slightly above the ship (updated)
-                camera.position.z = ship.position.z + 0.35; // Behind the ship (updated)
-                camera.lookAt(ship.position); // Always look at the ship
+                camera.position.y = ship.position.y + 0.1;
+                camera.position.z = ship.position.z + 0.7;
+                // Make the camera look slightly upwards relative to its lower position
+                camera.lookAt(ship.position.x, ship.position.y + 0.5, ship.position.z);
             }
 
             renderer.render(scene, camera); // Render the scene
