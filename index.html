@@ -459,9 +459,10 @@
                     // Create a straight path for duplication
                     const pathPoints = [];
                     // Use original track segment length for path generation
-                    const scaledTrackSegmentLength = trackSegmentLength; // Revert to original scale
+                    // Adjusted track segment length multiplier based on feedback (3 times apart)
+                    const adjustedTrackSegmentLength = trackSegmentLength * 3; 
                     for (let i = 0; i <= numberOfSegments; i++) {
-                        pathPoints.push(new THREE.Vector3(0, 0, i * scaledTrackSegmentLength)); 
+                        pathPoints.push(new THREE.Vector3(0, 0, i * adjustedTrackSegmentLength)); 
                     }
                     const trackPath = new THREE.CatmullRomCurve3(pathPoints);
 
@@ -483,6 +484,8 @@
 
                         segmentMesh.position.copy(position);
                         segmentMesh.quaternion.copy(orientation); // Orient the segment along the path
+                        // Corrected rotation for Blender Z-up to Three.js Y-up conversion for track segment
+                        segmentMesh.rotation.x = -Math.PI / 2; // Rotate 90 degrees on X to lay flat
                         segmentMesh.rotation.y += Math.PI; // Adjust rotation to face forward if needed based on model's default orientation
 
                         scene.add(segmentMesh);
@@ -493,31 +496,33 @@
                         // Assuming your segment is centered at origin and has width/length for simple box colliders
                         const segmentBody = new CANNON.Body({ mass: 0 }); // Static body
 
-                        // Use original physics dimensions
+                        // Use original physics dimensions (scaled by the adjustedTrackSegmentLength multiplier if needed)
                         const scaledTrackWidth = trackWidth;
                         const scaledTrackHeight = trackHeight;
                         const scaledWallThickness = wallThickness;
                         const scaledWallHeight = wallHeight;
 
                         // Track Ground (flat part)
-                        const groundShape = new CANNON.Box(new CANNON.Vec3(scaledTrackWidth, scaledTrackHeight / 2, scaledTrackSegmentLength / 2)); 
+                        const groundShape = new CANNON.Box(new CANNON.Vec3(scaledTrackWidth, scaledTrackHeight / 2, adjustedTrackSegmentLength / 2)); 
                         const groundOffset = new CANNON.Vec3(0, -scaledTrackHeight / 2, 0); 
                         segmentBody.addShape(groundShape, groundOffset);
 
                         // Left Wall (sloped edge) - simplified as a box for now, adjust position/rotation later for 30-45 deg
-                        const leftWallShape = new CANNON.Box(new CANNON.Vec3(scaledWallThickness / 2, scaledWallHeight / 2, scaledTrackSegmentLength / 2)); 
+                        const leftWallShape = new CANNON.Box(new CANNON.Vec3(scaledWallThickness / 2, scaledWallHeight / 2, adjustedTrackSegmentLength / 2)); 
                         const leftWallOffset = new CANNON.Vec3(-(scaledTrackWidth - scaledWallThickness / 2), scaledWallHeight / 2, 0); 
                         segmentBody.addShape(leftWallShape, leftWallOffset);
 
 
                         // Right Wall (sloped edge)
-                        const rightWallShape = new CANNON.Box(new CANNON.Vec3(scaledWallThickness / 2, scaledWallHeight / 2, scaledTrackSegmentLength / 2)); 
+                        const rightWallShape = new CANNON.Box(new CANNON.Vec3(scaledWallThickness / 2, scaledWallHeight / 2, adjustedTrackSegmentLength / 2)); 
                         const rightWallOffset = new CANNON.Vec3((scaledTrackWidth - scaledWallThickness / 2), scaledWallHeight / 2, 0); 
                         segmentBody.addShape(rightWallShape, rightWallOffset);
 
 
                         segmentBody.position.copy(position);
                         segmentBody.quaternion.copy(orientation);
+                        // Apply the same X-axis rotation to the physics body to match visual
+                        segmentBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2); // Rotate 90 degrees on X
                         world.addBody(segmentBody);
                         console.log(`Track segment ${i} physics body created at position: ${segmentBody.position.x}, ${segmentBody.position.y}, ${segmentBody.position.z}`);
                     }
