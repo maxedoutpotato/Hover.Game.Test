@@ -270,8 +270,8 @@
             scene.background = new THREE.Color(0x000000); // Black background
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            // Adjusted camera position to be closer to origin for potentially tiny models
-            camera.position.set(0, 5, -15); // Reverted to a closer, more standard view
+            // Initial camera position. Will be overridden by updateCamera
+            camera.position.set(0, 5, -15); 
 
             renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); // Use the globally defined canvas
             renderer.setSize(canvas.offsetWidth, canvas.offsetHeight); // Use the globally defined canvas
@@ -486,8 +486,7 @@
                         segmentMesh.quaternion.copy(orientation); // Orient the segment along the path
                         // Corrected rotation for Blender Z-up to Three.js Y-up conversion for track segment
                         segmentMesh.rotation.x = -Math.PI / 2; // Rotate 90 degrees on X to lay flat
-                        // Removed segmentMesh.rotation.y += Math.PI; as it might be causing issues
-                        // segmentMesh.rotation.z = Math.PI; // Flip 180 degrees on Z if the back is facing forward (common for inverted models)
+                        segmentMesh.rotation.y = Math.PI; // Rotate 180 degrees on Y to face forward
 
 
                         scene.add(segmentMesh);
@@ -523,9 +522,9 @@
 
                         segmentBody.position.copy(position);
                         segmentBody.quaternion.copy(orientation);
-                        // Apply the same X-axis and Z-axis rotation to the physics body to match visual
+                        // Apply the same X-axis and Y-axis rotation to the physics body to match visual
                         segmentBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2); // Rotate 90 degrees on X
-                        // segmentBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), Math.PI); // Rotate 180 degrees on Z (new local Z)
+                        segmentBody.quaternion.multiply(new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI)); // Rotate 180 degrees on Y
                         world.addBody(segmentBody);
                         console.log(`Track segment ${i} physics body created at position: ${segmentBody.position.x}, ${segmentBody.position.y}, ${segmentBody.position.z}`);
                     }
@@ -725,7 +724,7 @@
 
             // Camera follow behind and slightly above
             // This offset needs to be a THREE.Vector3 for applyQuaternion
-            const relativeCameraOffset = new THREE.Vector3(0, 2, -5); // 2-3 times closer
+            const relativeCameraOffset = new THREE.Vector3(0, 0.5, -1.5); // Much closer
             // Apply player's rotation (THREE.Quaternion from playerMesh) to the offset to get world coordinates
             const cameraOffset = relativeCameraOffset.applyQuaternion(playerMesh.quaternion);
 
@@ -733,7 +732,7 @@
             camera.position.copy(playerPos).add(cameraOffset);
 
             // Make camera look at the player
-            camera.lookAt(playerPos.x, playerPos.y + 1, playerPos.z); // Adjusted look-at height
+            camera.lookAt(playerPos.x, playerPos.y + 0.2, playerPos.z); // Adjusted look-at height
         }
 
 
