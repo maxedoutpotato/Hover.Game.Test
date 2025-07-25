@@ -399,6 +399,11 @@
                     scene.add(playerMesh);
                     console.log("Ship model added to scene:", playerMesh);
 
+                    // --- Player Ship Orientation Fix ---
+                    // Rotate the player mesh by 180 degrees around Y-axis
+                    playerMesh.rotation.y = Math.PI; 
+                    console.log("Player mesh rotated 180 degrees on Y-axis.");
+
 
                     // Setup Animation Mixer
                     mixer = new THREE.AnimationMixer(playerMesh);
@@ -432,6 +437,12 @@
                     playerBody.position.set(0, hoverHeight + originalShipHeight / 2, 0); 
                     console.log("Player physics body created and added to world.");
                     console.log("Player body initial position:", playerBody.position.x, playerBody.position.y, playerBody.position.z);
+                    
+                    // --- Player Physics Body Orientation Fix ---
+                    // Apply the same 180-degree Y-axis rotation to the physics body
+                    playerBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI);
+                    console.log("Player physics body rotated 180 degrees on Y-axis.");
+
                     world.addBody(playerBody);
                 },
                 (xhr) => {
@@ -484,9 +495,13 @@
 
                         segmentMesh.position.copy(position);
                         segmentMesh.quaternion.copy(orientation); // Orient the segment along the path
-                        // Corrected rotation for Blender Z-up to Three.js Y-up conversion for track segment
-                        segmentMesh.rotation.x = -Math.PI / 2; // Rotate 90 degrees on X to lay flat
-                        segmentMesh.rotation.y = Math.PI; // Rotate 180 degrees on Y to face forward
+                        
+                        // --- Track Segment Rotation Fix ---
+                        // Apply X-axis rotation to lay flat (Blender Z-up to Three.js Y-up)
+                        segmentMesh.rotation.x = -Math.PI / 2; 
+                        // Apply Y-axis rotation to face forward (if model's default front is backward)
+                        segmentMesh.rotation.y = Math.PI; 
+                        console.log("Track segment visual mesh rotated.");
 
 
                         scene.add(segmentMesh);
@@ -522,9 +537,14 @@
 
                         segmentBody.position.copy(position);
                         segmentBody.quaternion.copy(orientation);
+                        // --- Track Physics Body Rotation Fix ---
                         // Apply the same X-axis and Y-axis rotation to the physics body to match visual
-                        segmentBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2); // Rotate 90 degrees on X
-                        segmentBody.quaternion.mult(new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI), segmentBody.quaternion); // Corrected to .mult
+                        let physicsRotation = new CANNON.Quaternion();
+                        physicsRotation.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2); // Rotate 90 degrees on X
+                        physicsRotation.mult(new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI), physicsRotation); // Rotate 180 degrees on Y
+                        segmentBody.quaternion.copy(physicsRotation); // Copy the combined rotation
+                        console.log("Track segment physics body rotated.");
+
                         world.addBody(segmentBody);
                         console.log(`Track segment ${i} physics body created at position: ${segmentBody.position.x}, ${segmentBody.position.y}, ${segmentBody.position.z}`);
                     }
@@ -572,7 +592,8 @@
                 playerBody.position.set(0, hoverHeight + originalShipHeight / 2, 0); 
                 playerBody.velocity.set(0, 0, 0);
                 playerBody.angularVelocity.set(0, 0, 0);
-                playerBody.quaternion.set(0, 0, 0, 1);
+                // Reset player quaternion to initial orientation (which now includes the 180-degree Y-rotation)
+                playerBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI); 
                 console.log("Game started. Player reset to position:", playerBody.position.x, playerBody.position.y, playerBody.position.z);
             }
 
@@ -724,7 +745,7 @@
 
             // Camera follow behind and slightly above
             // This offset needs to be a THREE.Vector3 for applyQuaternion
-            const relativeCameraOffset = new THREE.Vector3(0, 0.3, -0.7); // 5 times closer
+            const relativeCameraOffset = new THREE.Vector3(0, 0.5, -1.5); // Adjusted camera height and distance
             // Apply player's rotation (THREE.Quaternion from playerMesh) to the offset to get world coordinates
             const cameraOffset = relativeCameraOffset.applyQuaternion(playerMesh.quaternion);
 
@@ -732,7 +753,7 @@
             camera.position.copy(playerPos).add(cameraOffset);
 
             // Make camera look at the player
-            camera.lookAt(playerPos.x, playerPos.y + 0.1, playerPos.z); // Adjusted look-at height
+            camera.lookAt(playerPos.x, playerPos.y + 0.5, playerPos.z); // Adjusted look-at height
         }
 
 
