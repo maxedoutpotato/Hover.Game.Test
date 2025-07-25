@@ -256,9 +256,9 @@
             scene.background = new THREE.Color(0x000000); 
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            // Fixed camera position for debugging single segment
-            camera.position.set(0, 5, -15); // Positioned to see origin
-            camera.lookAt(0, 0, 0); // Look at origin
+            // Fixed camera position for debugging single segment - 10 times closer
+            camera.position.set(0, 1.6, -3.3); // Adjusted to be 10 times closer to ship at (0, 1.5, -2)
+            camera.lookAt(0, 1.5, -2); // Look at ship's approximate center
 
             renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); 
             renderer.setSize(canvas.offsetWidth, canvas.offsetHeight); 
