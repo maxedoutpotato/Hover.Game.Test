@@ -161,18 +161,26 @@
                     scene.add(ship);
 
                     // If the ship has animations, set up an animation mixer
+                    // Play only the 'Armature.Idle' animation
                     if (gltf.animations && gltf.animations.length) {
                         mixer = new THREE.AnimationMixer(ship);
-                        gltf.animations.forEach((clip) => {
-                            mixer.clipAction(clip).play();
-                        });
+                        const idleClip = THREE.AnimationClip.findByName(gltf.animations, 'Armature.Idle');
+                        if (idleClip) {
+                            mixer.clipAction(idleClip).play();
+                        } else {
+                            console.warn("Animation 'Armature.Idle' not found.");
+                            // Fallback: play the first animation if idle not found
+                            if (gltf.animations.length > 0) {
+                                mixer.clipAction(gltf.animations[0]).play();
+                            }
+                        }
                     }
 
                     // Position the camera behind the ship
                     // The camera's position is relative to the ship, so it follows the ship
                     // Adjust these values to get the desired camera angle and distance
-                    // Moved camera even closer (from 7.5 to 3.5)
-                    camera.position.set(ship.position.x, ship.position.y + 2, ship.position.z + 3.5);
+                    // Moved camera even closer (from 3.5 to 0.35) and lower (from +2 to +0.5)
+                    camera.position.set(ship.position.x, ship.position.y + 0.5, ship.position.z + 0.35);
                     camera.lookAt(ship.position); // Make the camera look at the ship
                 },
                 undefined, // onProgress callback (handled by LoadingManager)
@@ -216,8 +224,8 @@
                 // Keep camera behind the ship
                 // This ensures the camera follows the ship's movement
                 camera.position.x = ship.position.x;
-                camera.position.y = ship.position.y + 2; // Slightly above the ship
-                camera.position.z = ship.position.z + 3.5; // Behind the ship (updated)
+                camera.position.y = ship.position.y + 0.5; // Slightly above the ship (updated)
+                camera.position.z = ship.position.z + 0.35; // Behind the ship (updated)
                 camera.lookAt(ship.position); // Always look at the ship
             }
 
