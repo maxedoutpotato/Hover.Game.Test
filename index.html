@@ -183,26 +183,9 @@
     </div>
 
     <div id="messageBox" class="message-box">
-        <h2 id="messageTitle">Wipeout-like Racer</h2>
-        <p id="messageText">
-            Welcome to the futuristic racing experience!
-            <br><br>
-            <strong>Controls:</strong>
-            <br>
-            Use <strong>W / Arrow Up</strong> to accelerate.
-            <br>
-            Use <strong>S / Arrow Down</strong> to brake/reverse.
-            <br>
-            Use <strong>A / Arrow Left</strong> to steer left.
-            <br>
-            Use <strong>D / Arrow Right</strong> to steer right.
-            <br><br>
-            On touch devices, swipe left/right on the canvas to steer.
-            <br><br>
-            Your goal is to stay on the track and race against time!
-        </p>
+        <h2 id="messageTitle">Ship & Track Alignment Test</h2>
+        <p>You should see your Manta Ray ship and one track segment. The camera is positioned behind the ship. Please describe their orientation relative to the axes (red=X, green=Y, blue=Z).</p>
         <button id="startButton" class="button">Start Scene</button>
-        <button id="musicToggleButton" class="button">Toggle Music</button>
     </div>
 
     <audio id="backgroundMusic" loop>
@@ -226,10 +209,6 @@
         let animations = {}; // Stores animation actions by name
         let clock = new THREE.Clock(); // For animation time steps
         let canvas; // Declare canvas globally, assign in init
-
-        // Removed trackSegments, keys, gameRunning, gameTime, gameInterval, musicPlaying, backgroundMusic
-        // as they are not relevant for this single-segment visual alignment test.
-        // UI elements will still be present but not functional.
 
         // Player movement parameters (not active in this test, but kept for future reference)
         const hoverHeight = 1.0; 
