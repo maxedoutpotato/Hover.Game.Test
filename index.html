@@ -355,8 +355,8 @@
                     console.log("Ship model added to scene:", playerMesh);
 
                     // --- Player Ship Orientation Fix ---
-                    // This rotation should correctly orient the ship
-                    playerMesh.rotation.y = Math.PI; // Rotate 180 degrees on Y-axis
+                    // REMOVED manual rotation: Assuming Blender's +Y Up export handles this.
+                    // playerMesh.rotation.y = Math.PI; 
                     playerMesh.position.set(0, hoverHeight + 0.5, -2); // Place ship slightly above track, slightly back
 
                     // Setup Animation Mixer (animations will play but won't be controlled by input)
@@ -389,10 +389,9 @@
                     });
 
                     // --- Track Segment Rotation Fix ---
-                    // Apply X-axis rotation to lay flat (Blender Z-up to Three.js Y-up)
-                    segmentMesh.rotation.x = -Math.PI / 2; 
-                    // Apply Y-axis rotation to face forward (if model's default front is backward)
-                    segmentMesh.rotation.y = Math.PI; 
+                    // REMOVED manual rotations: Assuming Blender's +Y Up export handles this.
+                    // segmentMesh.rotation.x = -Math.PI / 2; 
+                    // segmentMesh.rotation.y = Math.PI; 
                     
                     scene.add(segmentMesh); // Add single segment to scene
                     console.log("Single track segment added to scene:", segmentMesh);
