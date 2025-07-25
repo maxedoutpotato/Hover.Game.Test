@@ -428,29 +428,10 @@
                         }
                     });
 
-                    // Create a straight path for duplication (even for 1 segment, it uses the path logic)
-                    const pathPoints = [];
-                    const adjustedTrackSegmentLength = trackSegmentLength / 5; // Distance between segments
-                    for (let i = 0; i < numberOfSegments; i++) { // Loop for 1 segment
-                        pathPoints.push(new THREE.Vector3(0, 0, i * adjustedTrackSegmentLength)); 
-                    }
-                    const trackPath = new THREE.CatmullRomCurve3(pathPoints);
-
-                    // Duplicate track segments (will run once for numberOfSegments = 1)
-                    for (let i = 0; i < numberOfSegments; i++) {
-                        const segmentMesh = baseTrackSegmentMesh.clone();
+                    // Handle single segment directly
+                    if (numberOfSegments === 1) {
+                        const segmentMesh = baseTrackSegmentMesh; // Use directly, no clone needed for single
                         segmentMesh.scale.set(1, 1, 1); 
-
-                        const t = i / (numberOfSegments > 1 ? numberOfSegments - 1 : 1); // Avoid division by zero for single segment
-                        const position = trackPath.getPointAt(t);
-                        const tangent = trackPath.getTangentAt(t).normalize();
-                        const up = new THREE.Vector3(0, 1, 0);
-                        const axis = new THREE.Vector3().crossVectors(up, tangent).normalize();
-                        const angle = Math.acos(up.dot(tangent));
-                        const orientation = new THREE.Quaternion().setFromAxisAngle(axis, angle);
-
-                        segmentMesh.position.copy(position);
-                        segmentMesh.quaternion.copy(orientation); 
                         
                         // --- Track Segment Rotation Fix ---
                         // Apply X-axis rotation to lay flat (Blender Z-up to Three.js Y-up)
@@ -459,15 +440,16 @@
                         segmentMesh.rotation.y = Math.PI; 
                         
                         scene.add(segmentMesh);
-                        trackSegments.push(segmentMesh);
+                        trackSegments.push(segmentMesh); // Add to array even if single
 
-                        // Create Cannon.js physics bodies for each segment
+                        // Create Cannon.js physics bodies for this single segment
                         const segmentBody = new CANNON.Body({ mass: 0 }); 
 
                         const scaledTrackWidth = trackWidth;
                         const scaledTrackHeight = trackHeight;
                         const scaledWallThickness = wallThickness;
                         const scaledWallHeight = wallHeight;
+                        const adjustedTrackSegmentLength = trackSegmentLength / 5; // Use this for physics body length
 
                         // Track Ground (flat part)
                         const groundShape = new CANNON.Box(new CANNON.Vec3(scaledTrackWidth, scaledTrackHeight / 2, adjustedTrackSegmentLength / 2)); 
@@ -484,7 +466,7 @@
                         const rightWallOffset = new CANNON.Vec3((scaledTrackWidth - scaledWallThickness / 2), scaledWallHeight / 2, 0); 
                         segmentBody.addShape(rightWallShape, rightWallOffset);
 
-                        segmentBody.position.copy(position);
+                        segmentBody.position.set(0, 0, 0); // Place at origin
                         // --- Track Physics Body Rotation Fix ---
                         let physicsRotation = new CANNON.Quaternion();
                         let tempQuaternionX = new CANNON.Quaternion();
@@ -495,6 +477,66 @@
                         tempQuaternionY.mult(tempQuaternionX, segmentBody.quaternion); 
                         
                         world.addBody(segmentBody);
+                    } else {
+                        // Original loop for multiple segments (not active now)
+                        const pathPoints = [];
+                        const adjustedTrackSegmentLength = trackSegmentLength / 5; 
+                        for (let i = 0; i < numberOfSegments; i++) { 
+                            pathPoints.push(new THREE.Vector3(0, 0, i * adjustedTrackSegmentLength)); 
+                        }
+                        const trackPath = new THREE.CatmullRomCurve3(pathPoints);
+
+                        for (let i = 0; i < numberOfSegments; i++) {
+                            const segmentMesh = baseTrackSegmentMesh.clone();
+                            segmentMesh.scale.set(1, 1, 1); 
+
+                            const t = i / (numberOfSegments - 1);
+                            const position = trackPath.getPointAt(t);
+                            const tangent = trackPath.getTangentAt(t).normalize();
+                            const up = new THREE.Vector3(0, 1, 0);
+                            const axis = new THREE.Vector3().crossVectors(up, tangent).normalize();
+                            const angle = Math.acos(up.dot(tangent));
+                            const orientation = new THREE.Quaternion().setFromAxisAngle(axis, angle);
+
+                            segmentMesh.position.copy(position);
+                            segmentMesh.quaternion.copy(orientation); 
+                            
+                            segmentMesh.rotation.x = -Math.PI / 2; 
+                            segmentMesh.rotation.y = Math.PI; 
+                            
+                            scene.add(segmentMesh);
+                            trackSegments.push(segmentMesh);
+
+                            const segmentBody = new CANNON.Body({ mass: 0 }); 
+
+                            const scaledTrackWidth = trackWidth;
+                            const scaledTrackHeight = trackHeight;
+                            const scaledWallThickness = wallThickness;
+                            const scaledWallHeight = wallHeight;
+
+                            const groundShape = new CANNON.Box(new CANNON.Vec3(scaledTrackWidth, scaledTrackHeight / 2, adjustedTrackSegmentLength / 2)); 
+                            const groundOffset = new CANNON.Vec3(0, -scaledTrackHeight / 2, 0); 
+                            segmentBody.addShape(groundShape, groundOffset);
+
+                            const leftWallShape = new CANNON.Box(new CANNON.Vec3(scaledWallThickness / 2, scaledWallHeight / 2, adjustedTrackSegmentLength / 2)); 
+                            const leftWallOffset = new CANNON.Vec3(-(scaledTrackWidth - scaledWallThickness / 2), scaledWallHeight / 2, 0); 
+                            segmentBody.addShape(leftWallShape, leftWallOffset);
+
+                            const rightWallShape = new CANNON.Box(new CANNON.Vec3(scaledWallThickness / 2, scaledWallHeight / 2, adjustedTrackSegmentLength / 2)); 
+                            const rightWallOffset = new CANNON.Vec3((scaledTrackWidth - scaledWallThickness / 2), scaledWallHeight / 2, 0); 
+                            segmentBody.addShape(rightWallShape, rightWallOffset);
+
+                            segmentBody.position.copy(position);
+                            let physicsRotation = new CANNON.Quaternion();
+                            let tempQuaternionX = new CANNON.Quaternion();
+                            let tempQuaternionY = new CANNON.Quaternion();
+
+                            tempQuaternionX.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2); 
+                            tempQuaternionY.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI);
+                            tempQuaternionY.mult(tempQuaternionX, segmentBody.quaternion); 
+                            
+                            world.addBody(segmentBody);
+                        }
                     }
                 },
                 (xhr) => { console.log('Track model ' + (xhr.loaded / xhr.total * 100) + '% loaded'); },
