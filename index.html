@@ -229,8 +229,8 @@
             scene.background = new THREE.Color(0x000000); 
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            // Fixed camera position for debugging visibility - moved way back
-            camera.position.set(0, 50, 200); // Positioned along positive Z (opposite side), and up a bit
+            // Fixed camera position - significantly further back
+            camera.position.set(0, 10, -50); // Adjusted to be further back
             camera.lookAt(0, 0, 0); // Look at the origin
 
             renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); 
@@ -285,20 +285,26 @@
         }
 
         function loadModels(loader) {
-            // Use MeshNormalMaterial for debugging visibility
-            const debugMaterial = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
-            console.log("Debug material (MeshNormalMaterial) created.");
+            // Revert to default material (will use loaded textures if available)
+            const defaultMaterial = new THREE.MeshStandardMaterial({
+                color: 0x888888, // Neutral gray
+                metalness: 0.7,
+                roughness: 0.3,
+                side: THREE.DoubleSide
+            });
+            console.log("Default material for models created:", defaultMaterial);
 
             // Load Ship Model
             loader.load(
                 'https://maxedoutpotato.github.io/Hover.Game.Test/Game.Ship.glb', 
                 (gltf) => {
                     playerMesh = gltf.scene;
-                    playerMesh.scale.set(50, 50, 50); // Aggressive scaling for visibility
+                    playerMesh.scale.set(1, 1, 1); // Original scale
                     
                     playerMesh.traverse((node) => {
                         if (node.isMesh) {
-                            node.material = debugMaterial; // Apply debug material
+                            // Use loaded material if present, otherwise fallback to defaultMaterial
+                            node.material = node.material || defaultMaterial; 
                         }
                     });
                     scene.add(playerMesh);
@@ -330,11 +336,12 @@
                 'https://maxedoutpotato.github.io/Hover.Game.Test/Game.Track.Section.001.glb', 
                 (gltf) => {
                     const segmentMesh = gltf.scene; // No clone needed for single segment
-                    segmentMesh.scale.set(50, 50, 50); // Aggressive scaling for visibility
+                    segmentMesh.scale.set(1, 1, 1); // Original scale
                     
                     segmentMesh.traverse((node) => {
                         if (node.isMesh) {
-                            node.material = debugMaterial; // Apply debug material
+                            // Use loaded material if present, otherwise fallback to defaultMaterial
+                            node.material = node.material || defaultMaterial; 
                         }
                     });
 
