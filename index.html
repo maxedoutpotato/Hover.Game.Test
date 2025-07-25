@@ -230,8 +230,8 @@
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             // Fixed camera position for debugging visibility
-            camera.position.set(0, 10, -30); // Wide view to capture potentially large/misplaced models
-            camera.lookAt(0, 0, 0); // Look at the origin
+            camera.position.set(0, 1.5, 3.5); // Positioned behind the ship, slightly up
+            camera.lookAt(0, 0.5, 0); // Look at the general area of the ship
 
             renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); 
             renderer.setSize(canvas.offsetWidth, canvas.offsetHeight); 
