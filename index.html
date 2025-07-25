@@ -113,7 +113,7 @@
 
             // Camera setup - Fixed for this alignment test
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 1.5, -3.5); // Positioned behind the ship, slightly up
+            camera.position.set(0, 1.5, 3.5); // Positioned in front of the ship, slightly up
             camera.lookAt(0, 0.5, 0); // Look at the general area of the ship
 
             // Renderer setup
@@ -223,7 +223,7 @@
                     });
                     scene.add(segmentMesh); // Add single segment to scene at origin
                     console.log("Single track segment added to scene:", segmentMesh);
-                    // No rotation applied here, relying on Blender's +Y Up export
+                    segmentMesh.rotation.y = Math.PI; // Rotate 180 degrees on Y-axis
                 },
                 (xhr) => { console.log('Track model ' + (xhr.loaded / xhr.total * 100) + '% loaded'); },
                 (error) => { console.error('An error occurred loading the track segment model:', error); }
