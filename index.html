@@ -229,8 +229,8 @@
             scene.background = new THREE.Color(0x000000); 
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            // Fixed camera position for debugging visibility
-            camera.position.set(0, 10, -30); // Wide view to capture potentially large/misplaced models
+            // Fixed camera position for debugging visibility - moved way back
+            camera.position.set(0, 50, -200); // Significantly further back along negative Z, and up a bit
             camera.lookAt(0, 0, 0); // Look at the origin
 
             renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); 
