@@ -60,9 +60,9 @@
 
     <script type="module">
         // Import necessary Three.js modules
-        // Changed the Three.js and GLTFLoader import paths to use unpkg.com for better module resolution consistency.
-        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js';
-        import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/loaders/GLTFLoader.js';
+        // Using Skypack CDN for robust ES module resolution.
+        import * as THREE from 'https://cdn.skypack.dev/three@0.128.0';
+        import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.128.0/examples/jsm/loaders/GLTFLoader';
 
         let scene, camera, renderer, ship, track;
         let loadingManager;
@@ -93,7 +93,7 @@
             };
 
             loadingManager.onError = function (url) {
-                console.error('There was an error loading ' + url);
+                console.error('An error occurred while loading ' + url);
                 // Optionally display an error message to the user
                 loadingScreen.innerHTML = '<p class="text-red-500">Error loading game. Please try again.</p>';
             };
