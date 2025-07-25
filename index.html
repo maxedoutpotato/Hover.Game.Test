@@ -63,6 +63,8 @@
         // Using Skypack CDN for robust ES module resolution.
         import * as THREE from 'https://cdn.skypack.dev/three@0.128.0';
         import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.128.0/examples/jsm/loaders/GLTFLoader';
+        // Import DRACOLoader for handling Draco compressed GLB models
+        import { DRACOLoader } from 'https://cdn.skypack.dev/three@0.128.0/examples/jsm/loaders/DRACOLoader';
 
         let scene, camera, renderer, ship, track;
         let loadingManager;
@@ -135,6 +137,13 @@
 
             // 5. Model Loading (GLB files)
             const gltfLoader = new GLTFLoader(loadingManager);
+
+            // Setup DRACOLoader for GLTF models that use Draco compression
+            const dracoLoader = new DRACOLoader();
+            // Set the path to the Draco decoder files. These are typically found in the three.js examples/js/libs/draco/ folder.
+            // Using a CDN path that points to the Draco decoder files.
+            dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
+            gltfLoader.setDRACOLoader(dracoLoader);
 
             // Load Ship Model
             gltfLoader.load(
