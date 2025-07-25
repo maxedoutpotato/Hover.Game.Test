@@ -322,7 +322,6 @@
             dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/'); // Path to Draco decoder files
             loader.setDRACOLoader(dracoLoader);
             console.log('DRACOLoader and GLTFLoader initialized and linked.');
-            console.log('DRACOLoader instance:', dracoLoader);
             console.log('GLTFLoader instance:', loader);
 
             loadModels(playerMaterial, groundMaterial, wallMaterial, loader); // Pass the configured loader
@@ -755,7 +754,7 @@
 
             // Camera follow behind and slightly above
             // This offset needs to be a THREE.Vector3 for applyQuaternion
-            const relativeCameraOffset = new THREE.Vector3(0, 0.5, -1.5); // Adjusted camera height and distance
+            const relativeCameraOffset = new THREE.Vector3(0, 0.5, -1.0); // Adjusted camera height and distance
             // Apply player's rotation (THREE.Quaternion from playerMesh) to the offset to get world coordinates
             const cameraOffset = relativeCameraOffset.applyQuaternion(playerMesh.quaternion);
 
@@ -763,7 +762,7 @@
             camera.position.copy(playerPos).add(cameraOffset);
 
             // Make camera look at the player
-            camera.lookAt(playerPos.x, playerPos.y + 0.5, playerPos.z); // Adjusted look-at height
+            camera.lookAt(playerPos.x, playerPos.y + 0.1, playerPos.z); // Adjusted look-at height
         }
 
 
