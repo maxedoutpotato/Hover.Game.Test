@@ -156,6 +156,8 @@
                     // Scale the ship 10 times larger
                     ship.scale.set(1.0, 1.0, 1.0); // Adjusted from 0.1 to 1.0
                     ship.position.set(0, 0.5, 0); // Initial position relative to track
+                    // Rotate the ship 180 degrees around the Y-axis
+                    ship.rotation.y = Math.PI;
                     scene.add(ship);
 
                     // If the ship has animations, set up an animation mixer
@@ -169,8 +171,8 @@
                     // Position the camera behind the ship
                     // The camera's position is relative to the ship, so it follows the ship
                     // Adjust these values to get the desired camera angle and distance
-                    // Moved camera 2 times closer by dividing Z offset by 2 (15 / 2 = 7.5)
-                    camera.position.set(ship.position.x, ship.position.y + 2, ship.position.z + 7.5);
+                    // Moved camera even closer (from 7.5 to 3.5)
+                    camera.position.set(ship.position.x, ship.position.y + 2, ship.position.z + 3.5);
                     camera.lookAt(ship.position); // Make the camera look at the ship
                 },
                 undefined, // onProgress callback (handled by LoadingManager)
@@ -215,7 +217,7 @@
                 // This ensures the camera follows the ship's movement
                 camera.position.x = ship.position.x;
                 camera.position.y = ship.position.y + 2; // Slightly above the ship
-                camera.position.z = ship.position.z + 7.5; // Behind the ship (updated)
+                camera.position.z = ship.position.z + 3.5; // Behind the ship (updated)
                 camera.lookAt(ship.position); // Always look at the ship
             }
 
