@@ -524,7 +524,7 @@
                         segmentBody.quaternion.copy(orientation);
                         // Apply the same X-axis and Y-axis rotation to the physics body to match visual
                         segmentBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2); // Rotate 90 degrees on X
-                        segmentBody.quaternion.multiply(new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI)); // Rotate 180 degrees on Y
+                        segmentBody.quaternion.mult(new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI), segmentBody.quaternion); // Corrected to .mult
                         world.addBody(segmentBody);
                         console.log(`Track segment ${i} physics body created at position: ${segmentBody.position.x}, ${segmentBody.position.y}, ${segmentBody.position.z}`);
                     }
@@ -724,7 +724,7 @@
 
             // Camera follow behind and slightly above
             // This offset needs to be a THREE.Vector3 for applyQuaternion
-            const relativeCameraOffset = new THREE.Vector3(0, 0.5, -1.5); // Much closer
+            const relativeCameraOffset = new THREE.Vector3(0, 1.5, -3.5); // Adjusted camera height and distance
             // Apply player's rotation (THREE.Quaternion from playerMesh) to the offset to get world coordinates
             const cameraOffset = relativeCameraOffset.applyQuaternion(playerMesh.quaternion);
 
@@ -732,7 +732,7 @@
             camera.position.copy(playerPos).add(cameraOffset);
 
             // Make camera look at the player
-            camera.lookAt(playerPos.x, playerPos.y + 0.2, playerPos.z); // Adjusted look-at height
+            camera.lookAt(playerPos.x, playerPos.y + 0.5, playerPos.z); // Adjusted look-at height
         }
 
 
