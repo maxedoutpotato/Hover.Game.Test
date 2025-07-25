@@ -5,150 +5,223 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hover Game Test</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #1a1a1a; }
-        canvas { display: block; }
+        body { margin: 0; overflow: hidden; background-color: #1a1a1a; font-family: 'Inter', sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; } /* Canvas fills the entire viewport */
+        #loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 2em;
+            z-index: 1000;
+            flex-direction: column;
+        }
+        #loading-bar-container {
+            width: 50%;
+            background: #333;
+            height: 10px;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        #loading-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00f, #0f0);
+            border-radius: 5px;
+            transition: width 0.1s linear;
+        }
     </style>
+    <!-- Include Three.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Include GLTFLoader for loading GLB models -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
+    <div id="loading-screen">
+        <p>Loading Game Assets...</p>
+        <div id="loading-bar-container">
+            <div id="loading-bar"></div>
+        </div>
+    </div>
     <script type="module">
-        // Import necessary modules from jsdelivr.net for better stability and CORS compatibility
-        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js'; // Using a specific stable version of Three.js
-        import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/GLTFLoader.js';
-        import { DRACOLoader } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/DRACOLoader.js';
-
+        // Global variables for scene, camera, renderer, and models
         let scene, camera, renderer;
         let ship, track;
+        let mixer; // For animations (if any in GLB)
 
-        /**
-         * Initializes the 3D scene, camera, renderer, and loads models.
-         */
+        // Loading manager to track asset loading progress
+        const loadingManager = new THREE.LoadingManager();
+        const loadingScreen = document.getElementById('loading-screen');
+        const loadingBar = document.getElementById('loading-bar');
+
+        loadingManager.onProgress = function (url, itemsLoaded, itemsTotal) {
+            // Update the loading bar width based on progress
+            const progress = (itemsLoaded / itemsTotal) * 100;
+            loadingBar.style.width = progress + '%';
+        };
+
+        loadingManager.onLoad = function () {
+            // Hide loading screen once all assets are loaded
+            loadingScreen.style.display = 'none';
+            // Start the animation loop after loading
+            animate();
+        };
+
+        loadingManager.onError = function (url) {
+            console.error('Error loading ' + url);
+            loadingScreen.innerHTML = '<p style="color:red;">Error loading game assets. Please check console for details.</p>';
+        };
+
+        // Initialize the scene, camera, and renderer
         function init() {
-            // Scene setup
+            // Create a new Three.js scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x000000); // Dark background for space/futuristic feel
+            // Set background color to a dark blue/purple for a futuristic feel
+            scene.background = new THREE.Color(0x1a0a30);
 
-            // Camera setup
+            // Set up the camera (PerspectiveCamera)
+            // FOV: Field of View (vertical, in degrees)
+            // Aspect: Aspect ratio (width / height)
+            // Near: Near clipping plane
+            // Far: Far clipping plane
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            // Initial camera position will be set relative to the ship once loaded
 
-            // Renderer setup
+            // Create a WebGL renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
+            // Set renderer size to fill the window
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio); // Handle high-DPI displays
-            renderer.shadowMap.enabled = true; // Enable shadow maps for realistic lighting
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
+            // Append the renderer's DOM element to the body
             document.body.appendChild(renderer.domElement);
 
-            // Lighting
-            // Ambient light to provide overall illumination
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
-            scene.add(ambientLight);
+            // Add lighting to the scene
+            addLighting();
 
-            // Directional light to simulate a sun or strong light source
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-            directionalLight.position.set(5, 10, 7); // Position the light
-            directionalLight.castShadow = true; // Enable shadows for this light
-
-            // Configure shadow properties for the directional light
-            directionalLight.shadow.mapSize.width = 2048; // Shadow map resolution
-            directionalLight.shadow.mapSize.height = 2048;
-            directionalLight.shadow.camera.near = 0.5; // Near plane for shadow frustum
-            directionalLight.shadow.camera.far = 50; // Far plane for shadow frustum
-            directionalLight.shadow.camera.left = -10; // Left boundary of shadow frustum
-            directionalLight.shadow.camera.right = 10; // Right boundary
-            directionalLight.shadow.camera.top = 10; // Top boundary
-            directionalLight.shadow.camera.bottom = -10; // Bottom boundary
-            scene.add(directionalLight);
-
-            // Optional: Helper to visualize the directional light's shadow camera
-            // const helper = new THREE.CameraHelper(directionalLight.shadow.camera);
-            // scene.add(helper);
-
-            // GLTF Loader setup
-            const loader = new GLTFLoader();
-
-            // DRACOLoader setup for compressed models
-            const dracoLoader = new DRACOLoader();
-            // Set the path to the DRACO decoder files. These are typically hosted on a CDN.
-            // Ensure this path is correct for the DRACO version compatible with your Three.js version
-            dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
-            loader.setDRACOLoader(dracoLoader);
-
-            // Load the track model
-            loader.load(
-                'Game.Track.Section.001.glb',
-                function (gltf) {
-                    track = gltf.scene;
-                    track.traverse(function (node) {
-                        if (node.isMesh) {
-                            node.receiveShadow = true; // Track receives shadows
-                            node.castShadow = true; // Track can also cast shadows
-                        }
-                    });
-                    scene.add(track);
-                    console.log('Track loaded:', track);
-                },
-                undefined, // onProgress callback (optional)
-                function (error) {
-                    console.error('Error loading track model:', error);
-                }
-            );
-
-            // Load the ship model
-            loader.load(
-                'Game.Ship.glb',
-                function (gltf) {
-                    ship = gltf.scene;
-                    ship.traverse(function (node) {
-                        if (node.isMesh) {
-                            node.castShadow = true; // Ship casts shadows
-                            node.receiveShadow = true; // Ship receives shadows
-                        }
-                    });
-                    // Initial position for the ship (adjust as needed)
-                    ship.position.set(0, 0.5, 0); // Example: slightly above the origin
-                    scene.add(ship);
-                    console.log('Ship loaded:', ship);
-
-                    // Position the camera behind the ship once the ship is loaded
-                    // Adjust these values to get the desired camera angle and distance
-                    camera.position.set(ship.position.x, ship.position.y + 2, ship.position.z + 5);
-                    camera.lookAt(ship.position);
-                },
-                undefined, // onProgress callback (optional)
-                function (error) {
-                    console.error('Error loading ship model:', error);
-                }
-            );
+            // Load the GLB models
+            loadModels();
 
             // Handle window resizing
             window.addEventListener('resize', onWindowResize, false);
-
-            // Start the animation loop
-            animate();
         }
 
-        /**
-         * Updates the camera aspect ratio and renderer size on window resize.
-         */
+        // Function to add various lights to the scene
+        function addLighting() {
+            // Ambient light: illuminates all objects equally from all directions
+            // Does not cast shadows, good for general brightness
+            const ambientLight = new THREE.AmbientLight(0x404040, 2); // Color, Intensity
+            scene.add(ambientLight);
+
+            // Directional light: acts like sunlight, coming from a specific direction
+            // Good for casting shadows and defining form
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); // Color, Intensity
+            directionalLight.position.set(5, 10, 7); // Position of the light source
+            directionalLight.castShadow = true; // Enable shadow casting for this light
+            scene.add(directionalLight);
+
+            // Optional: Add a second directional light for more dynamic lighting
+            const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight2.position.set(-5, 5, -5);
+            scene.add(directionalLight2);
+
+            // Optional: Add a hemisphere light for more natural outdoor lighting
+            // Sky color, ground color, intensity
+            const hemisphereLight = new THREE.HemisphereLight(0xb1e1ff, 0xb97a20, 0.5);
+            scene.add(hemisphereLight);
+        }
+
+        // Function to load 3D models (GLB format)
+        function loadModels() {
+            const gltfLoader = new THREE.GLTFLoader(loadingManager);
+
+            // Load the ship model
+            gltfLoader.load(
+                'Game.Ship.glb',
+                function (gltf) {
+                    ship = gltf.scene;
+                    ship.scale.set(0.1, 0.1, 0.1); // Adjust scale as needed
+                    ship.position.set(0, 0.5, 0); // Initial position relative to track
+                    scene.add(ship);
+
+                    // If the ship has animations, set up an animation mixer
+                    if (gltf.animations && gltf.animations.length) {
+                        mixer = new THREE.AnimationMixer(ship);
+                        gltf.animations.forEach((clip) => {
+                            mixer.clipAction(clip).play();
+                        });
+                    }
+
+                    // Position the camera behind the ship
+                    // The camera's position is relative to the ship, so it follows the ship
+                    // Adjust these values to get the desired camera angle and distance
+                    camera.position.set(ship.position.x, ship.position.y + 2, ship.position.z + 5);
+                    camera.lookAt(ship.position); // Make the camera look at the ship
+                },
+                undefined, // onProgress callback (handled by LoadingManager)
+                function (error) {
+                    console.error('An error occurred while loading the ship model:', error);
+                }
+            );
+
+            // Load the track model
+            gltfLoader.load(
+                'Game.Track.Section.001.glb',
+                function (gltf) {
+                    track = gltf.scene;
+                    track.scale.set(1, 1, 1); // Adjust scale as needed
+                    track.position.set(0, 0, 0); // Place track at origin
+                    scene.add(track);
+                },
+                undefined, // onProgress callback (handled by LoadingManager)
+                function (error) {
+                    console.error('An error occurred while loading the track model:', error);
+                }
+            );
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate); // Request the next frame
+
+            const delta = 0.016; // Approximate time per frame (60 FPS)
+
+            // Update animations if mixer exists
+            if (mixer) {
+                mixer.update(delta);
+            }
+
+            // Optional: Simple ship movement for testing (remove later for actual game logic)
+            if (ship) {
+                // Example: make the ship slowly move forward
+                // ship.position.z -= 0.05;
+
+                // Keep camera behind the ship
+                // This ensures the camera follows the ship's movement
+                camera.position.x = ship.position.x;
+                camera.position.y = ship.position.y + 2; // Slightly above the ship
+                camera.position.z = ship.position.z + 5; // Behind the ship
+                camera.lookAt(ship.position); // Always look at the ship
+            }
+
+            renderer.render(scene, camera); // Render the scene
+        }
+
+        // Handle window resizing
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        /**
-         * The main animation loop.
-         */
-        function animate() {
-            requestAnimationFrame(animate);
-
-            // Render the scene
-            renderer.render(scene, camera);
-        }
-
-        // Initialize the scene when the window loads
-        window.onload = init;
+        // Initialize the game when the window loads
+        window.onload = function () {
+            init();
+        };
     </script>
 </body>
 </html>
