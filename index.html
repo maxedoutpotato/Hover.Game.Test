@@ -1,1 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hover Game Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden; /* Hide scrollbars */
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        #loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.5rem;
+            z-index: 100;
+            transition: opacity 0.5s ease-in-out;
+        }
+        #loading-bar-container {
+            width: 50%;
+            height: 10px;
+            background-color: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        #loading-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #4CAF50; /* Green loading bar */
+            border-radius: 5px;
+            transition: width 0.1s linear;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">
+        <p>Loading Game Assets...</p>
+        <div id="loading-bar-container">
+            <div id="loading-bar"></div>
+        </div>
+    </div>
 
+    <script type="module">
+        // Import necessary Three.js modules
+        import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.min.js';
+        import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/loaders/GLTFLoader.js';
+
+        let scene, camera, renderer, ship, track;
+        let loadingManager;
+        const loadingScreen = document.getElementById('loading-screen');
+        const loadingBar = document.getElementById('loading-bar');
+
+        /**
+         * Initializes the Three.js scene, camera, renderer, and loads models.
+         * This function is called once the window has fully loaded.
+         */
+        function init() {
+            // Setup loading manager to track asset loading progress
+            loadingManager = new THREE.LoadingManager();
+
+            loadingManager.onProgress = function (url, itemsLoaded, itemsTotal) {
+                // Update the loading bar width based on progress
+                const progress = (itemsLoaded / itemsTotal) * 100;
+                loadingBar.style.width = `${progress}%`;
+            };
+
+            loadingManager.onLoad = function () {
+                // Once all assets are loaded, fade out the loading screen
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                }, 500); // Allow fade-out transition to complete
+                animate(); // Start the animation loop after loading
+            };
+
+            loadingManager.onError = function (url) {
+                console.error('There was an error loading ' + url);
+                // Optionally display an error message to the user
+                loadingScreen.innerHTML = '<p class="text-red-500">Error loading game. Please try again.</p>';
+            };
+
+            // 1. Scene Setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x222222); // Dark grey background for the scene
+
+            // 2. Camera Setup
+            // Args: FOV, Aspect Ratio, Near Clipping Plane, Far Clipping Plane
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+            // 3. Renderer Setup
+            renderer = new THREE.WebGLRenderer({ antialias: true }); // Enable antialiasing for smoother edges
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio); // Use device's pixel ratio for sharper rendering
+            document.body.appendChild(renderer.domElement);
+
+            // 4. Lighting
+            // Ambient light: illuminates all objects in the scene equally from all directions.
+            // Good for providing basic visibility and softening shadows.
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // Color, Intensity
+            scene.add(ambientLight);
+
+            // Directional light: simulates sunlight, coming from a specific direction.
+            // Creates shadows and highlights based on its position and target.
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Color, Intensity
+            directionalLight.position.set(5, 10, 7); // Position the light source
+            directionalLight.target.position.set(0, 0, 0); // Point the light towards the origin
+            scene.add(directionalLight);
+            scene.add(directionalLight.target); // Add the target to the scene for it to work correctly
+
+            // Optional: Add another directional light from a different angle for better illumination
+            const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+            directionalLight2.position.set(-5, 5, -5);
+            directionalLight2.target.position.set(0, 0, 0);
+            scene.add(directionalLight2);
+            scene.add(directionalLight2.target);
+
+            // 5. Model Loading (GLB files)
+            const gltfLoader = new GLTFLoader(loadingManager);
+
+            // Load Ship Model
+            gltfLoader.load(
+                'Game.Ship.glb',
+                (gltf) => {
+                    ship = gltf.scene;
+                    ship.scale.set(0.1, 0.1, 0.1); // Scale down the ship to a reasonable size
+                    ship.position.set(0, 0.5, 0); // Initial position of the ship
+                    ship.rotation.y = Math.PI; // Rotate the ship to face forward (adjust if needed)
+                    scene.add(ship);
+
+                    // Position the camera behind the ship
+                    // The camera is placed relative to the ship's position and orientation.
+                    // Adjust these values (x, y, z offsets) to get the desired camera angle.
+                    // For example, -5 on Z means 5 units behind the ship in its local Z-axis.
+                    camera.position.set(ship.position.x, ship.position.y + 2, ship.position.z - 5);
+                    camera.lookAt(ship.position); // Make the camera look at the ship
+                },
+                undefined, // Progress callback (handled by loadingManager)
+                (error) => {
+                    console.error('An error occurred while loading the ship model:', error);
+                }
+            );
+
+            // Load Track Model
+            gltfLoader.load(
+                'Game.Track.Section.001.glb',
+                (gltf) => {
+                    track = gltf.scene;
+                    track.scale.set(1, 1, 1); // Keep track at its original scale for now
+                    track.position.set(0, 0, 0); // Position the track at the origin
+                    scene.add(track);
+                },
+                undefined, // Progress callback (handled by loadingManager)
+                (error) => {
+                    console.error('An error occurred while loading the track model:', error);
+                }
+            );
+
+            // Handle window resizing to make the scene responsive
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        /**
+         * Handles window resize events to update camera aspect ratio and renderer size.
+         */
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix(); // Update the camera's projection matrix
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        /**
+         * The main animation loop.
+         * This function is called repeatedly to render each frame.
+         */
+        function animate() {
+            requestAnimationFrame(animate); // Request the next frame
+            renderer.render(scene, camera); // Render the scene from the camera's perspective
+        }
+
+        // Initialize the scene once the window is fully loaded
+        window.onload = init;
+    </script>
+</body>
+</html>
