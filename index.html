@@ -230,7 +230,7 @@
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             // Fixed camera position - significantly further back
-            camera.position.set(0, 10, -50); // Adjusted to be further back
+            camera.position.set(0, 5, -15); // Adjusted to be closer
             camera.lookAt(0, 0, 0); // Look at the origin
 
             renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); 
