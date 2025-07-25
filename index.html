@@ -11,10 +11,10 @@
 </head>
 <body>
     <script type="module">
-        // Import necessary modules from cdnjs.cloudflare.com for better stability
-        import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.module.min.js'; // Using a specific stable version of Three.js
-        import { GLTFLoader } from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/examples/jsm/loaders/GLTFLoader.min.js';
-        import { DRACOLoader } from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/examples/jsm/loaders/DRACOLoader.min.js';
+        // Import necessary modules from jsdelivr.net for better stability and CORS compatibility
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js'; // Using a specific stable version of Three.js
+        import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/DRACOLoader.js';
 
         let scene, camera, renderer;
         let ship, track;
@@ -152,4 +152,6 @@
     </script>
 </body>
 </html>
+
+
 
