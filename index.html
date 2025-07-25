@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wipeout-like Racer</title>
+    <title>Basic 3D Scene</title>
     <style>
-        /* Global styles for the body */
         body {
             display: flex;
             flex-direction: column;
@@ -13,579 +12,153 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            background-color: #1a1a2e; /* Dark futuristic background */
-            font-family: 'Inter', sans-serif; /* Modern font */
-            color: #ffffff; /* White text */
-            overflow: hidden; /* Prevent scrollbars */
+            background-color: #282c34;
+            font-family: 'Inter', sans-serif;
+            color: #ffffff;
+            overflow: hidden;
         }
-
-        /* Game container for UI and canvas */
-        .game-container {
-            background-color: #21213b; /* Slightly lighter dark background */
-            border-radius: 15px; /* Rounded corners */
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); /* Stronger shadow */
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            max-width: 95%; /* Responsive width */
-            width: 800px; /* Max width for desktop */
-            box-sizing: border-box;
-            position: relative; /* For message box positioning */
-        }
-
-        /* Canvas styling */
         canvas {
             display: block;
-            width: 100%; /* Make canvas responsive */
-            height: 500px; /* Fixed height for game area */
-            border-radius: 10px; /* Rounded corners for canvas */
-            background-color: #000000; /* Black background for 3D scene */
-            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5); /* Inner shadow */
-        }
-
-        /* UI elements styling */
-        .ui-panel {
-            display: flex;
-            justify-content: space-around;
             width: 100%;
-            padding: 10px 0;
-            background-color: #2c2c4a;
+            height: 500px; /* Fixed height for game area */
+            background-color: #000000;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5);
         }
-
-        .ui-item {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #8aff8a; /* Bright green for UI text */
-            text-shadow: 0 0 5px rgba(138, 255, 138, 0.5);
-        }
-
-        /* Message box for game instructions/over */
         .message-box {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: rgba(33, 33, 59, 0.98); /* Semi-transparent dark background */
-            border: 2px solid #8aff8a; /* Green border */
+            background-color: rgba(40, 44, 52, 0.95);
+            border: 2px solid #61dafb;
             border-radius: 15px;
             padding: 30px;
             text-align: center;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
             z-index: 100;
-            display: flex; /* Shown by default for instructions */
+            display: flex;
             flex-direction: column;
             gap: 15px;
-            width: 90%;
-            max-width: 500px;
+            width: 80%;
+            max-width: 400px;
             box-sizing: border-box;
         }
-
         .message-box h2 {
             color: #e0e0e0;
             margin-bottom: 10px;
-            font-size: 2.2em;
-            text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+            font-size: 2em;
         }
-
         .message-box p {
             color: #c0c0c0;
-            font-size: 1.1em;
-            line-height: 1.6;
-            margin-bottom: 15px;
+            font-size: 1.2em;
+            margin-bottom: 20px;
         }
-
-        /* Button styling */
         .button {
-            background: linear-gradient(145deg, #8aff8a, #4caf50); /* Green gradient */
-            color: #1a1a2e; /* Dark text for contrast */
+            background: linear-gradient(145deg, #61dafb, #21a1f1);
+            color: white;
             padding: 12px 25px;
             border: none;
             border-radius: 8px;
             font-size: 1.1em;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-
         .button:hover {
-            background: linear-gradient(145deg, #4caf50, #8aff8a); /* Reverse gradient on hover */
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+            background: linear-gradient(145deg, #21a1f1, #61dafb);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
             transform: translateY(-2px);
         }
-
         .button:active {
             transform: translateY(0);
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
         }
-
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .game-container {
-                padding: 15px;
-                gap: 15px;
-            }
-            canvas {
-                height: 400px;
-            }
-            .ui-item {
-                font-size: 1em;
-            }
-            .message-box h2 {
-                font-size: 1.8em;
-            }
-            .message-box p {
-                font-size: 1em;
-            }
-            .button {
-                padding: 10px 20px;
-                font-size: 1em;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .game-container {
-                padding: 10px;
-                gap: 10px;
-            }
-            canvas {
-                height: 300px;
-            }
-            .ui-item {
-                font-size: 0.9em;
-            }
-            .message-box h2 {
-                font-size: 1.5em;
-            }
-            .message-box p {
-                font-size: 0.9em;
-            }
-            .button {
-                padding: 8px 15px;
-                font-size: 0.9em;
-            }
-        }
     </style>
 </head>
 <body>
-    <div class="game-container">
-        <div class="ui-panel">
-            <div class="ui-item">Speed: <span id="speedDisplay">0</span> km/h</div>
-            <div class="ui-item">Time: <span id="timeDisplay">00:00</span></div>
-        </div>
-        <canvas id="gameCanvas"></canvas>
-    </div>
+    <canvas id="gameCanvas"></canvas>
 
     <div id="messageBox" class="message-box">
-        <h2 id="messageTitle">Wipeout-like Racer</h2>
-        <p id="messageText">
-            Welcome to the futuristic racing experience!
-            <br><br>
-            <strong>Controls:</strong>
-            <br>
-            Use <strong>W / Arrow Up</strong> to accelerate.
-            <br>
-            Use <strong>S / Arrow Down</strong> to brake/reverse.
-            <br>
-            Use <strong>A / Arrow Left</strong> to steer left.
-            <br>
-            Use <strong>D / Arrow Right</strong> to steer right.
-            <br><br>
-            On touch devices, swipe left/right on the canvas to steer.
-            <br><br>
-            Your goal is to stay on the track and race against time!
-        </p>
-        <button id="startButton" class="button">Start Race</button>
-        <button id="musicToggleButton" class="button">Toggle Music</button>
+        <h2>Basic 3D Scene</h2>
+        <p>This is a clean slate! You should see a colorful cube and a gray plane.</p>
+        <button id="startButton" class="button">Start Scene</button>
     </div>
 
-    <audio id="backgroundMusic" loop>
-        <!-- Updated to a different SoundHelix song that is usually reliable -->
-        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
-        Your browser does not support the audio element.
-    </audio>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
-    <!-- DRACOLoader MUST be loaded BEFORE GLTFLoader if using UMD -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-
     <script>
-        // --- Global Variables ---
-        let scene, camera, renderer;
-        let world; // Cannon.js physics world
-        let playerMesh, playerBody; // Three.js mesh and Cannon.js body for the player
-        let mixer; // Animation mixer for the player ship
-        let animations = {}; // Stores animation actions by name
-        let clock = new THREE.Clock(); // For animation and physics time steps
-        let canvas; // Declare canvas globally, assign in init
+        let scene, camera, renderer, cube, plane;
+        let canvas;
 
-        let trackSegments = []; // Array to hold track segment meshes and bodies
-
-        let keys = {}; // Object to track pressed keys
-        let gameRunning = false;
-        let gameTime = 0;
-        let gameInterval = null; // Initialize to null
-        let musicPlaying = false;
-        let backgroundMusic;
-
-        // UI elements
-        const speedDisplay = document.getElementById('speedDisplay');
-        const timeDisplay = document.getElementById('timeDisplay');
-        const messageBox = document.getElementById('messageBox');
-        const messageTitle = document.getElementById('messageTitle');
-        const startButton = document.getElementById('startButton');
-        const musicToggleButton = document.getElementById('musicToggleButton');
-
-        // Player movement parameters
-        const maxSpeed = 70; // Max forward speed
-        const acceleration = 7; // How fast player accelerates
-        const brakingForce = 15; // How fast player brakes
-        const steeringSpeed = 0.08; // How fast player turns (angular velocity)
-        const hoverHeight = 1.0; // Desired height above ground
-        const hoverStrength = 100; // Stronger upward force for hover
-        const hoverDamping = 10; // Dampen vertical oscillations
-
-        // Track generation parameters
-        const trackSegmentLength = 20; // Approx length of your track segment in Blender units
-        const numberOfSegments = 100; // Number of segments for the straight test track
-        const trackWidth = 8; // Half-width of the track (from center to edge)
-        const trackHeight = 0.5; // Thickness of the track ground
-        const wallThickness = 0.5; // Thickness of the side walls
-        const wallHeight = 2.0; // Height of the side walls
-
-        // --- Initialization ---
         function init() {
-            canvas = document.getElementById('gameCanvas'); // Assign canvas here
+            canvas = document.getElementById('gameCanvas');
 
-            // Set up scene, camera, renderer
+            // Scene setup
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x000000); // Black background
 
+            // Camera setup
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            // Initial camera position. Will be overridden by updateCamera
-            camera.position.set(0, 5, -15); 
+            camera.position.set(0, 5, -10); // Positioned to see the origin
 
-            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); // Use the globally defined canvas
-            renderer.setSize(canvas.offsetWidth, canvas.offsetHeight); // Use the globally defined canvas
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
 
-            // Set up Cannon.js physics world
-            world = new CANNON.World();
-            world.gravity.set(0, -9.82, 0); // Standard gravity
-            world.broadphase = new CANNON.SAPBroadphase(world);
-
-            // Create materials for physics interactions
-            const groundMaterial = new CANNON.Material("groundMaterial");
-            const playerMaterial = new CANNON.Material("playerMaterial");
-            const wallMaterial = new CANNON.Material("wallMaterial");
-
-            const groundPlayerContact = new CANNON.ContactMaterial(groundMaterial, playerMaterial, {
-                friction: 0.5,
-                restitution: 0.1
-            });
-            world.addContactMaterial(groundPlayerContact);
-
-            const playerWallContact = new CANNON.ContactMaterial(playerMaterial, wallMaterial, {
-                friction: 0.1,
-                restitution: 0.5
-            });
-            world.addContactMaterial(playerWallContact);
-
-            // Add lighting - Increased intensities and added HemisphereLight
-            const ambientLight = new THREE.AmbientLight(0x404040, 2); // Increased intensity
+            // Add lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft white light
             scene.add(ambientLight);
-
-            const hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.5); // Sky color, ground color, intensity
-            scene.add(hemisphereLight);
-
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); // Increased intensity
-            directionalLight.position.set(5, 10, 5).normalize(); // Adjusted position for better illumination
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1); // White directional light
+            directionalLight.position.set(5, 10, 5).normalize();
             scene.add(directionalLight);
 
-            // Add AxesHelper for debugging scene origin
-            const axesHelper = new THREE.AxesHelper(50); // Size of the axes
-            scene.add(axesHelper);
-            console.log("AxesHelper added to scene.");
+            // Create a simple cube (placeholder for ship)
+            const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+            const cubeMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Red cube
+            cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+            cube.position.y = 0.5; // Place on top of the plane
+            scene.add(cube);
 
-            // Load Ship and Track
-            // Initialize loader and dracoLoader here, and pass them to loadModels
-            const loader = new THREE.GLTFLoader();
-            const dracoLoader = new THREE.DRACOLoader();
-            dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/'); // Path to Draco decoder files
-            loader.setDRACOLoader(dracoLoader);
-            console.log('DRACOLoader and GLTFLoader initialized and linked.');
-            console.log('DRACOLoader instance:', dracoLoader);
-            console.log('GLTFLoader instance:', loader);
-
-            loadModels(playerMaterial, groundMaterial, wallMaterial, loader); // Pass the configured loader
-
-            // Get background music element
-            backgroundMusic = document.getElementById('backgroundMusic');
-            backgroundMusic.volume = 0.3;
+            // Create a ground plane
+            const planeGeometry = new THREE.PlaneGeometry(20, 20);
+            const planeMaterial = new THREE.MeshStandardMaterial({ color: 0x555555, side: THREE.DoubleSide }); // Gray plane
+            plane = new THREE.Mesh(planeGeometry, planeMaterial);
+            plane.rotation.x = -Math.PI / 2; // Rotate to be horizontal
+            scene.add(plane);
 
             // Event Listeners
             window.addEventListener('resize', onWindowResize);
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
-            startButton.addEventListener('click', startGame);
-            musicToggleButton.addEventListener('click', toggleMusic);
-
-            // Touch controls (similar to previous game)
-            let touchStartX = 0;
-            canvas.addEventListener('touchstart', (e) => {
-                if (!gameRunning) return;
-                touchStartX = e.touches[0].clientX;
-                keys['w'] = true; // Auto-accelerate on touch
+            document.getElementById('startButton').addEventListener('click', () => {
+                document.getElementById('messageBox').style.display = 'none';
             });
 
-            canvas.addEventListener('touchmove', (e) => {
-                if (!gameRunning) return;
-                const touchCurrentX = e.touches[0].clientX;
-                const deltaX = touchCurrentX - touchStartX;
-
-                if (deltaX > 20) { keys['d'] = true; keys['a'] = false; }
-                else if (deltaX < -20) { keys['a'] = true; keys['d'] = false; }
-                else { keys['a'] = false; keys['d'] = false; }
-                touchStartX = touchCurrentX;
-            });
-
-            canvas.addEventListener('touchend', () => {
-                keys['w'] = false; keys['a'] = false; keys['d'] = false;
-            });
-
+            // Start animation loop
             animate();
         }
 
-        // --- Model Loading ---
-        // Now accepts the pre-configured loader
-        function loadModels(playerMaterial, groundMaterial, wallMaterial, loader) {
-            // Define a temporary, bright material for debugging visibility
-            // Reverting to original material or a simple PBR material for now
-            const defaultMaterial = new THREE.MeshStandardMaterial({
-                color: 0x888888, // Neutral gray
-                metalness: 0.7,
-                roughness: 0.3,
-                side: THREE.DoubleSide
-            });
-            console.log("Default material for models created:", defaultMaterial);
-
-
-            // Load Ship Model
-            loader.load(
-                'https://maxedoutpotato.github.io/Hover.Game.Test/Game.Ship.glb', // Updated to GitHub Pages URL
-                (gltf) => {
-                    playerMesh = gltf.scene;
-                    // Reset scale to 1 (original Blender units)
-                    const scaleFactor = 1; 
-                    playerMesh.scale.set(scaleFactor, scaleFactor, scaleFactor); 
-                    console.log("Ship scale set to:", playerMesh.scale.x);
-                    
-                    // Apply default material to all meshes in the ship model (or use gltf.scene.children[0].material if it has one)
-                    playerMesh.traverse((node) => {
-                        if (node.isMesh) {
-                            // Use the loaded material if available, otherwise apply a default
-                            node.material = node.material || defaultMaterial; 
-                            console.log("Applied material to ship mesh:", node.name);
-                        }
-                    });
-                    scene.add(playerMesh);
-                    console.log("Ship model added to scene:", playerMesh);
-
-                    // --- Player Ship Orientation Fix ---
-                    // Rotate the player mesh by 180 degrees around Y-axis
-                    playerMesh.rotation.y = Math.PI; 
-                    console.log("Player mesh rotated 180 degrees on Y-axis.");
-
-
-                    // Setup Animation Mixer
-                    mixer = new THREE.AnimationMixer(playerMesh);
-                    gltf.animations.forEach((clip) => {
-                        const action = mixer.clipAction(clip);
-                        animations[clip.name] = action;
-                        // Play idle animation by default
-                        if (clip.name === 'Idle') { // Assuming your idle animation is named 'Idle'
-                            action.play();
-                            console.log("Playing Idle animation.");
-                        } else {
-                            action.setEffectiveWeight(0); // Start other animations at zero influence
-                        }
-                    });
-
-                    // Cannon.js player body - adjusted for Manta Ray shape
-                    // Approximate with a box for simplicity, adjust half extents
-                    // These dimensions should match your Blender model's dimensions *before* scaling
-                    const originalShipWidth = 5; // Assuming original dimensions from Blender
-                    const originalShipHeight = 1;
-                    const originalShipDepth = 8;
-
-                    const playerShape = new CANNON.Box(new CANNON.Vec3(
-                        originalShipWidth / 2 * scaleFactor,
-                        originalShipHeight / 2 * scaleFactor,
-                        originalShipDepth / 2 * scaleFactor
-                    ));
-                    playerBody = new CANNON.Body({ mass: 5, material: playerMaterial });
-                    playerBody.addShape(playerShape);
-                    // Start position adjusted for new scale and hover height
-                    playerBody.position.set(0, hoverHeight + originalShipHeight / 2, 0); 
-                    console.log("Player physics body created and added to world.");
-                    console.log("Player body initial position:", playerBody.position.x, playerBody.position.y, playerBody.position.z);
-                    
-                    // --- Player Physics Body Orientation Fix ---
-                    // Apply the same 180-degree Y-axis rotation to the physics body
-                    playerBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI);
-                    console.log("Player physics body rotated 180 degrees on Y-axis.");
-
-                    world.addBody(playerBody);
-                },
-                (xhr) => {
-                    console.log('Ship model ' + (xhr.loaded / xhr.total * 100) + '% loaded');
-                },
-                (error) => {
-                    console.error('An error occurred loading the ship model:', error);
-                    console.warn('Possible reason: GitHub Pages might not be enabled for your repository, or the file paths are incorrect. Please ensure GitHub Pages is enabled and the files are directly accessible at the provided URLs.');
-                }
-            );
-
-            // Load Track Segment Model and duplicate
-            loader.load(
-                'https://maxedoutpotato.github.io/Hover.Game.Test/Game.Track.Section.001.glb', // Updated to GitHub Pages URL
-                (gltf) => {
-                    const baseTrackSegmentMesh = gltf.scene;
-                    baseTrackSegmentMesh.traverse((node) => {
-                        // Apply default material to all meshes in the track segment
-                        if (node.isMesh) {
-                            node.material = node.material || defaultMaterial;
-                        }
-                    });
-
-                    // Create a straight path for duplication
-                    const pathPoints = [];
-                    const adjustedTrackSegmentLength = trackSegmentLength / 5; 
-                    for (let i = 0; i <= numberOfSegments; i++) {
-                        pathPoints.push(new THREE.Vector3(0, 0, i * adjustedTrackSegmentLength)); 
-                    }
-                    const trackPath = new THREE.CatmullRomCurve3(pathPoints);
-
-                    // Duplicate track segments
-                    for (let i = 0; i < numberOfSegments; i++) {
-                        const segmentMesh = baseTrackSegmentMesh.clone();
-                        const scaleFactor = 1; 
-                        segmentMesh.scale.set(scaleFactor, scaleFactor, scaleFactor); 
-
-                        // Calculate position and orientation along the path
-                        const t = i / (numberOfSegments - 1);
-                        const position = trackPath.getPointAt(t);
-                        const tangent = trackPath.getTangentAt(t).normalize();
-                        const up = new THREE.Vector3(0, 1, 0);
-                        const axis = new THREE.Vector3().crossVectors(up, tangent).normalize();
-                        const angle = Math.acos(up.dot(tangent));
-                        const orientation = new THREE.Quaternion().setFromAxisAngle(axis, angle);
-
-                        segmentMesh.position.copy(position);
-                        segmentMesh.quaternion.copy(orientation); 
-                        
-                        // --- Track Segment Rotation Fix ---
-                        // Apply X-axis rotation to lay flat (Blender Z-up to Three.js Y-up)
-                        segmentMesh.rotation.x = -Math.PI / 2; 
-                        // Apply Y-axis rotation to face forward (if model's default front is backward)
-                        segmentMesh.rotation.y = Math.PI; 
-                        
-                        scene.add(segmentMesh);
-                        trackSegments.push(segmentMesh);
-
-                        // Create Cannon.js physics bodies for each segment
-                        const segmentBody = new CANNON.Body({ mass: 0 }); 
-
-                        const scaledTrackWidth = trackWidth;
-                        const scaledTrackHeight = trackHeight;
-                        const scaledWallThickness = wallThickness;
-                        const scaledWallHeight = wallHeight;
-
-                        // Track Ground (flat part)
-                        const groundShape = new CANNON.Box(new CANNON.Vec3(scaledTrackWidth, scaledTrackHeight / 2, adjustedTrackSegmentLength / 2)); 
-                        const groundOffset = new CANNON.Vec3(0, -scaledTrackHeight / 2, 0); 
-                        segmentBody.addShape(groundShape, groundOffset);
-
-                        // Left Wall (sloped edge)
-                        const leftWallShape = new CANNON.Box(new CANNON.Vec3(scaledWallThickness / 2, scaledWallHeight / 2, adjustedTrackSegmentLength / 2)); 
-                        const leftWallOffset = new CANNON.Vec3(-(scaledTrackWidth - scaledWallThickness / 2), scaledWallHeight / 2, 0); 
-                        segmentBody.addShape(leftWallShape, leftWallOffset);
-
-                        // Right Wall (sloped edge)
-                        const rightWallShape = new CANNON.Box(new CANNON.Vec3(scaledWallThickness / 2, scaledWallHeight / 2, adjustedTrackSegmentLength / 2)); 
-                        const rightWallOffset = new CANNON.Vec3((scaledTrackWidth - scaledWallThickness / 2), scaledWallHeight / 2, 0); 
-                        segmentBody.addShape(rightWallShape, rightWallOffset);
-
-                        segmentBody.position.copy(position);
-                        // --- Track Physics Body Rotation Fix ---
-                        let physicsRotation = new CANNON.Quaternion();
-                        let tempQuaternionX = new CANNON.Quaternion();
-                        let tempQuaternionY = new CANNON.Quaternion();
-
-                        tempQuaternionX.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2); 
-                        tempQuaternionY.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI);
-                        tempQuaternionY.mult(tempQuaternionX, segmentBody.quaternion); 
-                        
-                        world.addBody(segmentBody);
-                    }
-                },
-                (xhr) => { console.log('Track model ' + (xhr.loaded / xhr.total * 100) + '% loaded'); },
-                (error) => { console.error('An error occurred loading the track segment model:', error); }
-            );
-        }
-
-        // --- Event Handlers ---
         function onWindowResize() {
-            const newWidth = canvas.offsetWidth; 
-            const newHeight = canvas.offsetHeight; 
+            const newWidth = canvas.offsetWidth;
+            const newHeight = canvas.offsetHeight;
             camera.aspect = newWidth / newHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(newWidth, newHeight);
         }
 
-        function toggleMusic() {
-            if (backgroundMusic.paused) {
-                backgroundMusic.play().then(() => {
-                    musicPlaying = true;
-                    musicToggleButton.textContent = "Pause Music";
-                }).catch(e => console.log("Music play blocked, user interaction needed:", e));
-            } else {
-                backgroundMusic.pause();
-                musicPlaying = false;
-                musicToggleButton.textContent = "Play Music";
-            }
-        }
-
-        // --- Animation Loop ---
         function animate() {
             requestAnimationFrame(animate);
-            const delta = clock.getDelta(); 
 
-            if (mixer) { 
-                mixer.update(delta); 
-            }
-            
-            // Re-enabled physics and full game logic
-            world.step(1 / 60, delta);
-            updatePlayer();
-            updateCamera(); 
+            // Rotate the cube for visual interest (no physics yet)
+            cube.rotation.x += 0.005;
+            cube.rotation.y += 0.005;
 
             renderer.render(scene, camera);
         }
 
-        // --- Initialize on window load ---
-        window.onload = function() {
-            init();
-            onWindowResize();
-        };
+        window.onload = init;
     </script>
 </body>
 </html>
