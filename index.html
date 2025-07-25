@@ -390,10 +390,8 @@
                     });
 
                     // --- Track Segment Rotation Fix ---
-                    // Apply X-axis rotation to lay flat (Blender Z-up to Three.js Y-up)
-                    segmentMesh.rotation.x = -Math.PI / 2; 
+                    // Apply X-axis rotation to lay flat (Blender Z-up to Three.js Y-up) 
                     // Apply Y-axis rotation to face forward (if model's default front is backward)
-                    segmentMesh.rotation.y = Math.PI; 
                     
                     scene.add(segmentMesh); // Add single segment to scene
                     console.log("Single track segment added to scene:", segmentMesh);
