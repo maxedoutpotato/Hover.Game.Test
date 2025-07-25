@@ -83,15 +83,26 @@
     <canvas id="gameCanvas"></canvas>
 
     <div id="messageBox" class="message-box">
-        <h2>Basic 3D Scene</h2>
-        <p>This is a clean slate! You should see a colorful cube and a gray plane.</p>
+        <h2>Ship & Track Alignment Test</h2>
+        <p>You should see your Manta Ray ship and one track segment. The camera is positioned behind the ship. Please describe their orientation relative to the axes (red=X, green=Y, blue=Z).</p>
         <button id="startButton" class="button">Start Scene</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script>
-        let scene, camera, renderer, cube, plane;
+        let scene, camera, renderer;
+        let world; // Cannon.js physics world (initialized but not stepped for this test)
+        let playerMesh; // Three.js mesh for the player
+        let mixer; // Animation mixer for the player ship
+        let animations = {}; // Stores animation actions by name
+        let clock = new THREE.Clock(); // For animation time steps
         let canvas;
+
+        // Player movement parameters (not active in this test, but kept for future reference)
+        const hoverHeight = 1.0; 
 
         function init() {
             canvas = document.getElementById('gameCanvas');
@@ -100,9 +111,10 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x000000); // Black background
 
-            // Camera setup
+            // Camera setup - Fixed for this alignment test
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 5, -10); // Positioned to see the origin
+            camera.position.set(0, 1.5, -3.5); // Positioned behind the ship, slightly up
+            camera.lookAt(0, 0.5, 0); // Look at the general area of the ship
 
             // Renderer setup
             renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
@@ -112,23 +124,37 @@
             // Add lighting
             const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft white light
             scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1); // White directional light
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); // White directional light
             directionalLight.position.set(5, 10, 5).normalize();
             scene.add(directionalLight);
 
-            // Create a simple cube (placeholder for ship)
-            const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
-            const cubeMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Red cube
-            cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-            cube.position.y = 0.5; // Place on top of the plane
-            scene.add(cube);
+            // Add AxesHelper for debugging scene origin and orientation
+            const axesHelper = new THREE.AxesHelper(5); // Size of the axes
+            scene.add(axesHelper);
+            console.log("AxesHelper added to scene.");
 
-            // Create a ground plane
-            const planeGeometry = new THREE.PlaneGeometry(20, 20);
-            const planeMaterial = new THREE.MeshStandardMaterial({ color: 0x555555, side: THREE.DoubleSide }); // Gray plane
-            plane = new THREE.Mesh(planeGeometry, planeMaterial);
-            plane.rotation.x = -Math.PI / 2; // Rotate to be horizontal
-            scene.add(plane);
+            // Set up Cannon.js physics world (initialized but gravity set to zero for static test)
+            world = new CANNON.World();
+            world.gravity.set(0, 0, 0); // No gravity for static test
+            world.broadphase = new CANNON.SAPBroadphase(world);
+
+            // Create placeholder physics materials (needed for loader, even if not active)
+            const playerMaterial = new CANNON.Material("playerMaterial");
+            const groundMaterial = new CANNON.Material("groundMaterial");
+            const wallMaterial = new CANNON.Material("wallMaterial");
+            world.addContactMaterial(new CANNON.ContactMaterial(groundMaterial, playerMaterial, { friction: 0.5, restitution: 0.1 }));
+            world.addContactMaterial(new CANNON.ContactMaterial(playerMaterial, wallMaterial, { friction: 0.1, restitution: 0.5 }));
+
+
+            // Initialize GLTF and DRACO loaders
+            const loader = new THREE.GLTFLoader();
+            const dracoLoader = new THREE.DRACOLoader();
+            dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+            loader.setDRACOLoader(dracoLoader);
+            console.log('DRACOLoader and GLTFLoader initialized and linked.');
+
+            // Load Ship and Track models
+            loadModels(loader);
 
             // Event Listeners
             window.addEventListener('resize', onWindowResize);
@@ -138,6 +164,70 @@
 
             // Start animation loop
             animate();
+        }
+
+        function loadModels(loader) {
+            const defaultMaterial = new THREE.MeshStandardMaterial({
+                color: 0x888888, // Neutral gray
+                metalness: 0.7,
+                roughness: 0.3,
+                side: THREE.DoubleSide
+            });
+
+            // Load Ship Model
+            loader.load(
+                'https://maxedoutpotato.github.io/Hover.Game.Test/Game.Ship.glb',
+                (gltf) => {
+                    playerMesh = gltf.scene;
+                    playerMesh.scale.set(1, 1, 1); // Use original scale
+
+                    playerMesh.traverse((node) => {
+                        if (node.isMesh) {
+                            node.material = node.material || defaultMaterial;
+                        }
+                    });
+                    scene.add(playerMesh);
+                    console.log("Ship model added to scene:", playerMesh);
+
+                    // Position the ship relative to the origin for observation
+                    playerMesh.position.set(0, hoverHeight + 0.5, 0); // Place on top of the track segment
+                    // No rotation applied here, relying on Blender's +Y Up export
+
+                    // Setup Animation Mixer (animations will play but won't be controlled by input)
+                    mixer = new THREE.AnimationMixer(playerMesh);
+                    gltf.animations.forEach((clip) => {
+                        const action = mixer.clipAction(clip);
+                        animations[clip.name] = action;
+                        if (clip.name === 'Idle') {
+                            action.play();
+                        } else {
+                            action.setEffectiveWeight(0);
+                        }
+                    });
+                },
+                (xhr) => { console.log('Ship model ' + (xhr.loaded / xhr.total * 100) + '% loaded'); },
+                (error) => { console.error('An error occurred loading the ship model:', error); }
+            );
+
+            // Load Track Segment Model (only one for now)
+            loader.load(
+                'https://maxedoutpotato.github.io/Hover.Game.Test/Game.Track.Section.001.glb',
+                (gltf) => {
+                    const segmentMesh = gltf.scene;
+                    segmentMesh.scale.set(1, 1, 1); // Use original scale
+
+                    segmentMesh.traverse((node) => {
+                        if (node.isMesh) {
+                            node.material = node.material || defaultMaterial;
+                        }
+                    });
+                    scene.add(segmentMesh); // Add single segment to scene at origin
+                    console.log("Single track segment added to scene:", segmentMesh);
+                    // No rotation applied here, relying on Blender's +Y Up export
+                },
+                (xhr) => { console.log('Track model ' + (xhr.loaded / xhr.total * 100) + '% loaded'); },
+                (error) => { console.error('An error occurred loading the track segment model:', error); }
+            );
         }
 
         function onWindowResize() {
@@ -150,11 +240,12 @@
 
         function animate() {
             requestAnimationFrame(animate);
+            const delta = clock.getDelta();
 
-            // Rotate the cube for visual interest (no physics yet)
-            cube.rotation.x += 0.005;
-            cube.rotation.y += 0.005;
-
+            if (mixer) {
+                mixer.update(delta);
+            }
+            
             renderer.render(scene, camera);
         }
 
