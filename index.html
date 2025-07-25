@@ -220,69 +220,56 @@
     <script>
         // --- Global Variables ---
         let scene, camera, renderer;
-        let world; // Cannon.js physics world
-        let playerMesh, playerBody; // Three.js mesh and Cannon.js body for the player
+        let world; // Cannon.js physics world (still initialized but not used for movement now)
+        let playerMesh; // Three.js mesh for the player
         let mixer; // Animation mixer for the player ship
         let animations = {}; // Stores animation actions by name
         let clock = new THREE.Clock(); // For animation and physics time steps
         let canvas; // Declare canvas globally, assign in init
 
-        let trackSegments = []; // Array to hold track segment meshes and bodies
+        // Removed trackSegments, keys, gameRunning, gameTime, gameInterval, musicPlaying, backgroundMusic
+        // as they are not relevant for this single-segment visual alignment test.
+        // UI elements will still be present but not functional.
 
-        let keys = {}; // Object to track pressed keys
-        let gameRunning = false;
-        let gameTime = 0;
-        let gameInterval = null; // Initialize to null
-        let musicPlaying = false;
-        let backgroundMusic;
+        // Player movement parameters (kept for future reference, not active now)
+        const maxSpeed = 70; 
+        const acceleration = 7; 
+        const brakingForce = 15; 
+        const steeringSpeed = 0.08; 
+        const hoverHeight = 1.0; 
+        const hoverStrength = 100; 
+        const hoverDamping = 10; 
 
-        // UI elements
-        const speedDisplay = document.getElementById('speedDisplay');
-        const timeDisplay = document.getElementById('timeDisplay');
-        const messageBox = document.getElementById('messageBox');
-        const messageTitle = document.getElementById('messageTitle');
-        const startButton = document.getElementById('startButton');
-        const musicToggleButton = document.getElementById('musicToggleButton');
-
-        // Player movement parameters
-        const maxSpeed = 70; // Max forward speed
-        const acceleration = 7; // How fast player accelerates
-        const brakingForce = 15; // How fast player brakes
-        const steeringSpeed = 0.08; // How fast player turns (angular velocity)
-        const hoverHeight = 1.0; // Desired height above ground
-        const hoverStrength = 100; // Stronger upward force for hover
-        const hoverDamping = 10; // Dampen vertical oscillations
-
-        // Track generation parameters
-        const trackSegmentLength = 20; // Approx length of your track segment in Blender units
-        const numberOfSegments = 100; // Number of segments for the straight test track
-        const trackWidth = 8; // Half-width of the track (from center to edge)
-        const trackHeight = 0.5; // Thickness of the track ground
-        const wallThickness = 0.5; // Thickness of the side walls
-        const wallHeight = 2.0; // Height of the side walls
+        // Track generation parameters (adjusted for single segment)
+        const trackSegmentLength = 20; 
+        const trackWidth = 8; 
+        const trackHeight = 0.5; 
+        const wallThickness = 0.5; 
+        const wallHeight = 2.0; 
 
         // --- Initialization ---
         function init() {
-            canvas = document.getElementById('gameCanvas'); // Assign canvas here
+            canvas = document.getElementById('gameCanvas'); 
 
             // Set up scene, camera, renderer
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x000000); // Black background
+            scene.background = new THREE.Color(0x000000); 
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            // Initial camera position. Will be overridden by updateCamera
-            camera.position.set(0, 5, -15); 
+            // Fixed camera position for debugging single segment
+            camera.position.set(0, 5, -15); // Positioned to see origin
+            camera.lookAt(0, 0, 0); // Look at origin
 
-            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); // Use the globally defined canvas
-            renderer.setSize(canvas.offsetWidth, canvas.offsetHeight); // Use the globally defined canvas
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); 
+            renderer.setSize(canvas.offsetWidth, canvas.offsetHeight); 
             renderer.setPixelRatio(window.devicePixelRatio);
 
-            // Set up Cannon.js physics world
+            // Set up Cannon.js physics world (still initialized but not actively used for movement)
             world = new CANNON.World();
-            world.gravity.set(0, -9.82, 0); // Standard gravity
+            world.gravity.set(0, 0, 0); // Set gravity to zero for static test
             world.broadphase = new CANNON.SAPBroadphase(world);
 
-            // Create materials for physics interactions
+            // Create materials for physics interactions (still needed if physics bodies are created)
             const groundMaterial = new CANNON.Material("groundMaterial");
             const playerMaterial = new CANNON.Material("playerMaterial");
             const wallMaterial = new CANNON.Material("wallMaterial");
@@ -299,509 +286,158 @@
             });
             world.addContactMaterial(playerWallContact);
 
-            // Add lighting - Increased intensities and added HemisphereLight
-            const ambientLight = new THREE.AmbientLight(0x404040, 2); // Increased intensity
+            // Add lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 2); 
             scene.add(ambientLight);
 
-            const hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.5); // Sky color, ground color, intensity
+            const hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.5); 
             scene.add(hemisphereLight);
 
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); // Increased intensity
-            directionalLight.position.set(5, 10, 5).normalize(); // Adjusted position for better illumination
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); 
+            directionalLight.position.set(5, 10, 5).normalize(); 
             scene.add(directionalLight);
 
             // Add AxesHelper for debugging scene origin
-            const axesHelper = new THREE.AxesHelper(50); // Size of the axes
+            const axesHelper = new THREE.AxesHelper(5); // Smaller axes for closer view
             scene.add(axesHelper);
             console.log("AxesHelper added to scene.");
 
             // Load Ship and Track
-            // Initialize loader and dracoLoader here, and pass them to loadModels
             const loader = new THREE.GLTFLoader();
             const dracoLoader = new THREE.DRACOLoader();
-            dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/'); // Path to Draco decoder files
+            dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/'); 
             loader.setDRACOLoader(dracoLoader);
             console.log('DRACOLoader and GLTFLoader initialized and linked.');
-            console.log('GLTFLoader instance:', loader);
 
-            loadModels(playerMaterial, groundMaterial, wallMaterial, loader); // Pass the configured loader
+            loadModels(playerMaterial, groundMaterial, wallMaterial, loader); 
 
-            // Get background music element
+            // Get background music element (still present but not controlled by game logic)
             backgroundMusic = document.getElementById('backgroundMusic');
             backgroundMusic.volume = 0.3;
 
-            // Event Listeners
+            // Event Listeners (disabled for movement, but still present for start/music toggle)
             window.addEventListener('resize', onWindowResize);
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
-            startButton.addEventListener('click', startGame);
+            startButton.addEventListener('click', () => { messageBox.style.display = 'none'; }); // Just hide message box
             musicToggleButton.addEventListener('click', toggleMusic);
 
-            // Touch controls (similar to previous game)
-            let touchStartX = 0;
-            canvas.addEventListener('touchstart', (e) => {
-                if (!gameRunning) return;
-                touchStartX = e.touches[0].clientX;
-                keys['w'] = true; // Auto-accelerate on touch
-            });
-
-            canvas.addEventListener('touchmove', (e) => {
-                if (!gameRunning) return;
-                const touchCurrentX = e.touches[0].clientX;
-                const deltaX = touchCurrentX - touchStartX;
-
-                if (deltaX > 20) { keys['d'] = true; keys['a'] = false; }
-                else if (deltaX < -20) { keys['a'] = true; keys['d'] = false; }
-                else { keys['a'] = false; keys['d'] = false; }
-                touchStartX = touchCurrentX;
-            });
-
-            canvas.addEventListener('touchend', () => {
-                keys['w'] = false; keys['a'] = false; keys['d'] = false;
-            });
+            // Remove keyboard/touch listeners for this static test
+            // document.addEventListener('keydown', onKeyDown);
+            // document.addEventListener('keyup', onKeyUp);
+            // canvas.addEventListener('touchstart', ...);
+            // canvas.addEventListener('touchmove', ...);
+            // canvas.addEventListener('touchend', ...);
 
             animate();
         }
 
         // --- Model Loading ---
-        // Now accepts the pre-configured loader
         function loadModels(playerMaterial, groundMaterial, wallMaterial, loader) {
-            // Define a temporary, bright material for debugging visibility
-            // Reverting to original material or a simple PBR material for now
             const defaultMaterial = new THREE.MeshStandardMaterial({
-                color: 0x888888, // Neutral gray
+                color: 0x888888, 
                 metalness: 0.7,
                 roughness: 0.3,
                 side: THREE.DoubleSide
             });
-            console.log("Default material for models created:", defaultMaterial);
-
 
             // Load Ship Model
             loader.load(
-                'https://maxedoutpotato.github.io/Hover.Game.Test/Game.Ship.glb', // Updated to GitHub Pages URL
+                'https://maxedoutpotato.github.io/Hover.Game.Test/Game.Ship.glb', 
                 (gltf) => {
                     playerMesh = gltf.scene;
-                    // Reset scale to 1 (original Blender units)
-                    const scaleFactor = 1; 
-                    playerMesh.scale.set(scaleFactor, scaleFactor, scaleFactor); 
-                    console.log("Ship scale set to:", playerMesh.scale.x);
+                    playerMesh.scale.set(1, 1, 1); // Original scale
                     
-                    // Apply default material to all meshes in the ship model (or use gltf.scene.children[0].material if it has one)
                     playerMesh.traverse((node) => {
                         if (node.isMesh) {
-                            // Use the loaded material if available, otherwise apply a default
                             node.material = node.material || defaultMaterial; 
-                            console.log("Applied material to ship mesh:", node.name);
                         }
                     });
                     scene.add(playerMesh);
                     console.log("Ship model added to scene:", playerMesh);
 
                     // --- Player Ship Orientation Fix ---
-                    // Rotate the player mesh by 180 degrees around Y-axis
-                    playerMesh.rotation.y = Math.PI; 
-                    console.log("Player mesh rotated 180 degrees on Y-axis.");
+                    // This rotation should correctly orient the ship
+                    playerMesh.rotation.y = Math.PI; // Rotate 180 degrees on Y-axis
+                    playerMesh.position.set(0, hoverHeight + 0.5, -2); // Place ship slightly above track, slightly back
 
-
-                    // Setup Animation Mixer
+                    // Setup Animation Mixer (animations will play but won't be controlled by input)
                     mixer = new THREE.AnimationMixer(playerMesh);
                     gltf.animations.forEach((clip) => {
                         const action = mixer.clipAction(clip);
                         animations[clip.name] = action;
-                        // Play idle animation by default
-                        if (clip.name === 'Idle') { // Assuming your idle animation is named 'Idle'
+                        if (clip.name === 'Idle') { 
                             action.play();
-                            console.log("Playing Idle animation.");
                         } else {
-                            action.setEffectiveWeight(0); // Start other animations at zero influence
+                            action.setEffectiveWeight(0); 
                         }
                     });
-
-                    // Cannon.js player body - adjusted for Manta Ray shape
-                    // Approximate with a box for simplicity, adjust half extents
-                    // These dimensions should match your Blender model's dimensions *before* scaling
-                    const originalShipWidth = 5; // Assuming original dimensions from Blender
-                    const originalShipHeight = 1;
-                    const originalShipDepth = 8;
-
-                    const playerShape = new CANNON.Box(new CANNON.Vec3(
-                        originalShipWidth / 2 * scaleFactor,
-                        originalShipHeight / 2 * scaleFactor,
-                        originalShipDepth / 2 * scaleFactor
-                    ));
-                    playerBody = new CANNON.Body({ mass: 5, material: playerMaterial });
-                    playerBody.addShape(playerShape);
-                    // Start position adjusted for new scale and hover height
-                    playerBody.position.set(0, hoverHeight + originalShipHeight / 2, 0); 
-                    console.log("Player physics body created and added to world.");
-                    console.log("Player body initial position:", playerBody.position.x, playerBody.position.y, playerBody.position.z);
-                    
-                    // --- Player Physics Body Orientation Fix ---
-                    // Apply the same 180-degree Y-axis rotation to the physics body
-                    playerBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI);
-                    console.log("Player physics body rotated 180 degrees on Y-axis.");
-
-                    world.addBody(playerBody);
                 },
-                (xhr) => {
-                    console.log('Ship model ' + (xhr.loaded / xhr.total * 100) + '% loaded');
-                },
-                (error) => {
-                    console.error('An error occurred loading the ship model:', error);
-                    console.warn('Possible reason: GitHub Pages might not be enabled for your repository, or the file paths are incorrect. Please ensure GitHub Pages is enabled and the files are directly accessible at the provided URLs.');
-                }
+                (xhr) => { console.log('Ship model ' + (xhr.loaded / xhr.total * 100) + '% loaded'); },
+                (error) => { console.error('An error occurred loading the ship model:', error); }
             );
 
-            // Load Track Segment Model and duplicate
+            // Load Track Segment Model (only one for now)
             loader.load(
-                'https://maxedoutpotato.github.io/Hover.Game.Test/Game.Track.Section.001.glb', // Updated to GitHub Pages URL
+                'https://maxedoutpotato.github.io/Hover.Game.Test/Game.Track.Section.001.glb', 
                 (gltf) => {
-                    const baseTrackSegmentMesh = gltf.scene;
-                    baseTrackSegmentMesh.traverse((node) => {
-                        // Apply default material to all meshes in the track segment
+                    const segmentMesh = gltf.scene; // No clone needed for single segment
+                    segmentMesh.scale.set(1, 1, 1); // Original scale
+                    
+                    segmentMesh.traverse((node) => {
                         if (node.isMesh) {
                             node.material = node.material || defaultMaterial;
-                            console.log("Applied material to track mesh:", node.name);
                         }
                     });
 
-                    // Create a straight path for duplication
-                    const pathPoints = [];
-                    // Use original track segment length for path generation
-                    // Adjusted track segment length multiplier based on feedback (3 times apart)
-                    const adjustedTrackSegmentLength = trackSegmentLength / 5; // Decreased by 5 times
-                    for (let i = 0; i <= numberOfSegments; i++) {
-                        pathPoints.push(new THREE.Vector3(0, 0, i * adjustedTrackSegmentLength)); 
-                    }
-                    const trackPath = new THREE.CatmullRomCurve3(pathPoints);
-
-                    // Duplicate track segments
-                    for (let i = 0; i < numberOfSegments; i++) {
-                        const segmentMesh = baseTrackSegmentMesh.clone();
-                        const scaleFactor = 1; // Revert to original scale
-                        segmentMesh.scale.set(scaleFactor, scaleFactor, scaleFactor); 
-                        console.log("Track segment scale set to:", segmentMesh.scale.x);
-
-                        // Calculate position and orientation along the path
-                        const t = i / (numberOfSegments - 1);
-                        const position = trackPath.getPointAt(t);
-                        const tangent = trackPath.getTangentAt(t).normalize();
-                        const up = new THREE.Vector3(0, 1, 0);
-                        const axis = new THREE.Vector3().crossVectors(up, tangent).normalize();
-                        const angle = Math.acos(up.dot(tangent));
-                        const orientation = new THREE.Quaternion().setFromAxisAngle(axis, angle);
-
-                        segmentMesh.position.copy(position);
-                        segmentMesh.quaternion.copy(orientation); // Orient the segment along the path
-                        
-                        // --- Track Segment Rotation Fix ---
-                        // Apply X-axis rotation to lay flat (Blender Z-up to Three.js Y-up)
-                        segmentMesh.rotation.x = -Math.PI / 2; 
-                        // Apply Y-axis rotation to face forward (if model's default front is backward)
-                        segmentMesh.rotation.y = Math.PI; 
-                        console.log("Track segment visual mesh rotated.");
-
-
-                        scene.add(segmentMesh);
-                        trackSegments.push(segmentMesh);
-                        console.log(`Track segment ${i} added to scene at position: ${position.x}, ${position.y}, ${position.z}`);
-
-                        // Create Cannon.js physics bodies for each segment
-                        // Assuming your segment is centered at origin and has width/length for simple box colliders
-                        const segmentBody = new CANNON.Body({ mass: 0 }); // Static body
-
-                        // Use original physics dimensions (scaled by the adjustedTrackSegmentLength multiplier if needed)
-                        const scaledTrackWidth = trackWidth;
-                        const scaledTrackHeight = trackHeight;
-                        const scaledWallThickness = wallThickness;
-                        const scaledWallHeight = wallHeight;
-
-                        // Track Ground (flat part)
-                        const groundShape = new CANNON.Box(new CANNON.Vec3(scaledTrackWidth, scaledTrackHeight / 2, adjustedTrackSegmentLength / 2)); 
-                        const groundOffset = new CANNON.Vec3(0, -scaledTrackHeight / 2, 0); 
-                        segmentBody.addShape(groundShape, groundOffset);
-
-                        // Left Wall (sloped edge) - simplified as a box for now, adjust position/rotation later for 30-45 deg
-                        const leftWallShape = new CANNON.Box(new CANNON.Vec3(scaledWallThickness / 2, scaledWallHeight / 2, adjustedTrackSegmentLength / 2)); 
-                        const leftWallOffset = new CANNON.Vec3(-(scaledTrackWidth - scaledWallThickness / 2), scaledWallHeight / 2, 0); 
-                        segmentBody.addShape(leftWallShape, leftWallOffset);
-
-
-                        // Right Wall (sloped edge)
-                        const rightWallShape = new CANNON.Box(new CANNON.Vec3(scaledWallThickness / 2, scaledWallHeight / 2, adjustedTrackSegmentLength / 2)); 
-                        const rightWallOffset = new CANNON.Vec3((scaledTrackWidth - scaledWallThickness / 2), scaledWallHeight / 2, 0); 
-                        segmentBody.addShape(rightWallShape, rightWallOffset);
-
-
-                        segmentBody.position.copy(position);
-                        // --- Track Physics Body Rotation Fix ---
-                        // Apply the same X-axis and Y-axis rotation to the physics body to match visual
-                        let physicsRotation = new CANNON.Quaternion();
-                        // Start with a clean quaternion
-                        let tempQuaternionX = new CANNON.Quaternion();
-                        let tempQuaternionY = new CANNON.Quaternion();
-
-                        // Rotate 90 degrees on X
-                        tempQuaternionX.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-                        // Rotate 180 degrees on Y
-                        tempQuaternionY.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI);
-
-                        // Combine rotations: first X, then Y
-                        // Cannon.js quaternion.mult(q1, q2) applies q1 then q2 if you read it from left to right.
-                        // So, to apply X then Y, it's Y.mult(X, result).
-                        tempQuaternionY.mult(tempQuaternionX, segmentBody.quaternion); // Store combined rotation directly in segmentBody.quaternion
-                        
-                        console.log("Track segment physics body rotated.");
-
-                        world.addBody(segmentBody);
-                        console.log(`Track segment ${i} physics body created at position: ${segmentBody.position.x}, ${segmentBody.position.y}, ${segmentBody.position.z}`);
-                    }
+                    // --- Track Segment Rotation Fix ---
+                    // Apply X-axis rotation to lay flat (Blender Z-up to Three.js Y-up)
+                    segmentMesh.rotation.x = -Math.PI / 2; 
+                    // Apply Y-axis rotation to face forward (if model's default front is backward)
+                    segmentMesh.rotation.y = Math.PI; 
+                    
+                    scene.add(segmentMesh); // Add single segment to scene
+                    console.log("Single track segment added to scene:", segmentMesh);
                 },
-                (xhr) => {
-                    console.log('Track model ' + (xhr.loaded / xhr.total * 100) + '% loaded');
-                },
-                (error) => {
-                    console.error('An error occurred loading the track segment model:', error);
-                    console.warn('Possible reason: GitHub Pages might not be enabled for your repository, or the file paths are incorrect. Please ensure GitHub Pages is enabled and the files are directly accessible at the provided URLs.');
-                }
+                (xhr) => { console.log('Track model ' + (xhr.loaded / xhr.total * 100) + '% loaded'); },
+                (error) => { console.error('An error occurred loading the track segment model:', error); }
             );
         }
 
-
         // --- Event Handlers ---
         function onWindowResize() {
-            const newWidth = canvas.offsetWidth; // Use global canvas
-            const newHeight = canvas.offsetHeight; // Use global canvas
+            const newWidth = canvas.offsetWidth; 
+            const newHeight = canvas.offsetHeight; 
             camera.aspect = newWidth / newHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(newWidth, newHeight);
         }
 
-        function onKeyDown(event) {
-            keys[event.key.toLowerCase()] = true;
-            if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(event.key.toLowerCase())) {
-                event.preventDefault(); // Prevent page scrolling
-            }
-        }
-
-        function onKeyUp(event) {
-            keys[event.key.toLowerCase()] = false;
-        }
-
-        function startGame() {
-            messageBox.style.display = 'none';
-            gameRunning = true;
-            gameTime = 0;
-
-            // Reset player position and velocity
-            if (playerBody) {
-                const scaleFactor = 1; // Original scale
-                const originalShipHeight = 1; // Assuming original height from Blender
-                playerBody.position.set(0, hoverHeight + originalShipHeight / 2, 0); 
-                playerBody.velocity.set(0, 0, 0);
-                playerBody.angularVelocity.set(0, 0, 0);
-                // Reset player quaternion to initial orientation (which now includes the 180-degree Y-rotation)
-                playerBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI); 
-                console.log("Game started. Player reset to position:", playerBody.position.x, playerBody.position.y, playerBody.position.z);
-            }
-
-            if (gameInterval) clearInterval(gameInterval); // gameInterval is now initialized to null
-            gameInterval = setInterval(() => {
-                if (gameRunning) {
-                    gameTime++;
-                    updateTimeDisplay();
-                }
-            }, 1000);
-
-            if (!musicPlaying) {
-                backgroundMusic.play().then(() => {
-                    musicPlaying = true;
-                }).catch(e => console.log("Music play blocked, user interaction needed:", e));
-            }
-        }
-
-        function endGame() {
-            gameRunning = false;
-            clearInterval(gameInterval);
-            messageTitle.textContent = "Race Over!";
-            messageText.innerHTML = `Your final time: ${formatTime(gameTime)}<br><br>Press 'Start Race' to try again!`;
-            startButton.textContent = "Restart Race";
-            messageBox.style.display = 'flex';
-        }
-
         function toggleMusic() {
-            if (musicPlaying) {
-                backgroundMusic.pause();
-                musicPlaying = false;
-                musicToggleButton.textContent = "Play Music";
-            } else {
+            if (backgroundMusic.paused) {
                 backgroundMusic.play().then(() => {
                     musicPlaying = true;
                     musicToggleButton.textContent = "Pause Music";
                 }).catch(e => console.log("Music play blocked, user interaction needed:", e));
-            }
-        }
-
-        // --- Game Logic ---
-        function updatePlayer() {
-            if (!playerBody) return;
-
-            const deltaTime = clock.getDelta(); // For consistent updates
-
-            // Apply linear damping to simulate air resistance
-            playerBody.linearDamping = 0.98; // Higher damping for hover feel
-            playerBody.angularDamping = 0.9;
-
-            // Hover System (Raycasting downwards)
-            const rayFrom = playerBody.position;
-            const rayTo = new CANNON.Vec3();
-            // Ray length should also be scaled
-            rayFrom.vadd(new CANNON.Vec3(0, -hoverHeight - 10, 0), rayTo); // Ray goes downwards, original length
-
-            world.raycastAny(rayFrom, rayTo, (result) => {
-                if (result.hasHit) {
-                    const distance = rayFrom.distanceTo(result.hitPoint);
-                    const heightDifference = hoverHeight - distance; // Original hover height
-
-                    // Apply proportional force to correct height and dampen vertical velocity
-                    const hoverForceMagnitude = heightDifference * hoverStrength - playerBody.velocity.y * hoverDamping;
-                    const hoverForce = new CANNON.Vec3(0, hoverForceMagnitude, 0);
-                    playerBody.applyForce(hoverForce, playerBody.position);
-
-                    // Orient ship to track normal (more advanced, conceptual here)
-                    // This would smooth out the ship's orientation based on the ground normal
-                    // For now, simpler upright:
-                    // const targetQuaternion = new CANNON.Quaternion();
-                    // targetQuaternion.setFromVectors(new CANNON.Vec3(0, 1, 0), result.hitNormal);
-                    // playerBody.quaternion.slerp(targetQuaternion, 0.1);
-                } else {
-                    // If no ground hit, apply a stronger downward force (gravity helper)
-                    playerBody.applyLocalForce(new CANNON.Vec3(0, -50, 0), playerBody.position); // Use local force, original strength
-                }
-            });
-
-            // Apply Thrust (forward/backward)
-            // Corrected: Use Cannon.js's vmult to apply quaternion to vector
-            const localForward = new CANNON.Vec3(0, 0, 1);
-            const worldForward = new CANNON.Vec3();
-            playerBody.quaternion.vmult(localForward, worldForward); // Apply player's orientation to local forward vector
-
-            const currentSpeed = playerBody.velocity.dot(worldForward); // Use worldForward for dot product
-
-            if (keys['w'] || keys['arrowup']) {
-                playerBody.applyLocalForce(
-                    new CANNON.Vec3(0, 0, acceleration * 10), // Original force
-                    new CANNON.Vec3(0, 0, 0)
-                );
-            }
-            if (keys['s'] || keys['arrowdown']) {
-                playerBody.applyLocalForce(
-                    new CANNON.Vec3(0, 0, -brakingForce * 10), // Original force
-                    new CANNON.Vec3(0, 0, 0)
-                );
-            }
-
-            // Apply Steering (Yaw Rotation)
-            // Apply angular velocity directly
-            if (keys['a'] || keys['arrowleft']) {
-                playerBody.angularVelocity.y = steeringSpeed * 10;
-            } else if (keys['d'] || keys['arrowright']) {
-                playerBody.angularVelocity.y = -steeringSpeed * 10;
             } else {
-                playerBody.angularVelocity.y *= 0.8; // Dampen when no input
+                backgroundMusic.pause();
+                musicPlaying = false;
+                musicToggleButton.textContent = "Play Music";
             }
-
-            // Limit player speed
-            const velocityMagnitude = playerBody.velocity.length();
-            const scaledMaxSpeed = maxSpeed; // Original max speed
-            if (velocityMagnitude > scaledMaxSpeed) {
-                playerBody.velocity.normalize();
-                playerBody.velocity.scale(scaledMaxSpeed, playerBody.velocity);
-            }
-
-            // Update speed display (convert back to original units for display)
-            speedDisplay.textContent = Math.round(velocityMagnitude * 3.6); // Original display
-            
-            // Ship Animations (placeholder logic)
-            if (mixer) {
-                mixer.update(deltaTime); // Update animations with delta time
-                // Example: Activate steering animations
-                if (keys['a'] || keys['arrowleft']) {
-                    if (animations['Turn_Left']) animations['Turn_Left'].setEffectiveWeight(1);
-                    if (animations['Turn_Right']) animations['Turn_Right'].setEffectiveWeight(0);
-                } else if (keys['d'] || keys['arrowright']) {
-                    if (animations['Turn_Right']) animations['Turn_Right'].setEffectiveWeight(1);
-                    if (animations['Turn_Left']) animations['Turn_Left'].setEffectiveWeight(0);
-                } else {
-                    if (animations['Turn_Left']) animations['Turn_Left'].setEffectiveWeight(0);
-                    if (animations['Turn_Right']) animations['Turn_Right'].setEffectiveWeight(0);
-                }
-                // Need to handle idle weight if other animations are active and then fade out
-            }
-
-            // End game if player falls off far below track
-            if (playerBody.position.y < -50) { // Original fall-off point
-                endGame();
-            }
-        }
-
-        function updateCamera() {
-            if (!playerBody || !playerMesh) return;
-
-            const playerPos = playerBody.position;
-            const playerQuat = playerBody.quaternion;
-
-            // Camera follow behind and slightly above
-            // This offset needs to be a THREE.Vector3 for applyQuaternion
-            const relativeCameraOffset = new THREE.Vector3(0, 0.5, -1.0); // Adjusted camera height and distance
-            // Apply player's rotation (THREE.Quaternion from playerMesh) to the offset to get world coordinates
-            const cameraOffset = relativeCameraOffset.applyQuaternion(playerMesh.quaternion);
-
-            // Set camera position
-            camera.position.copy(playerPos).add(cameraOffset);
-
-            // Make camera look at the player
-            camera.lookAt(playerPos.x, playerPos.y + 0.1, playerPos.z); // Adjusted look-at height
-        }
-
-
-        function updateTimeDisplay() {
-            timeDisplay.textContent = formatTime(gameTime);
-        }
-
-        function formatTime(seconds) {
-            const minutes = Math.floor(seconds / 60);
-            const remainingSeconds = seconds % 60;
-            const formattedMinutes = String(minutes).padStart(2, '0');
-            const formattedSeconds = String(remainingSeconds).padStart(2, '0');
-            return `${formattedMinutes}:${formattedSeconds}`;
         }
 
         // --- Animation Loop ---
         function animate() {
             requestAnimationFrame(animate);
+            const delta = clock.getDelta(); 
 
-            const delta = clock.getDelta(); // Time elapsed since last frame
-
-            if (gameRunning) {
-                // Step the physics world forward
-                world.step(1 / 60, delta); // Use delta for consistent physics updates
-
-                // Update player's physics and visual
-                updatePlayer();
-
-                // Sync Three.js mesh with Cannon.js body
-                if (playerMesh && playerBody) {
-                    playerMesh.position.copy(playerBody.position);
-                    playerMesh.quaternion.copy(playerBody.quaternion);
-                }
-
-                // Update camera position and look-at
-                updateCamera(); 
+            if (mixer) { // Update animations even without player movement
+                mixer.update(delta); 
             }
+            
+            // No physics update or player/camera movement logic in this simplified test
+            // world.step(1 / 60, delta);
+            // updatePlayer();
+            // updateCamera(); 
 
-            // Render the scene
             renderer.render(scene, camera);
         }
 
