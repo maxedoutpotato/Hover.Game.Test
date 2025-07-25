@@ -1,1 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hover Game Test</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1a1a1a; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script type="module">
+        // Import necessary modules from Skypack
+        import * as THREE from 'https://cdn.skypack.dev/three';
+        import { GLTFLoader } from 'https://cdn.skypack.dev/three/examples/jsm/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'https://cdn.skypack.dev/three/examples/jsm/loaders/DRACOLoader.js';
 
+        let scene, camera, renderer;
+        let ship, track;
+
+        /**
+         * Initializes the 3D scene, camera, renderer, and loads models.
+         */
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000); // Dark background for space/futuristic feel
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            // Initial camera position will be set relative to the ship once loaded
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio); // Handle high-DPI displays
+            renderer.shadowMap.enabled = true; // Enable shadow maps for realistic lighting
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
+            document.body.appendChild(renderer.domElement);
+
+            // Lighting
+            // Ambient light to provide overall illumination
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
+            scene.add(ambientLight);
+
+            // Directional light to simulate a sun or strong light source
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 10, 7); // Position the light
+            directionalLight.castShadow = true; // Enable shadows for this light
+
+            // Configure shadow properties for the directional light
+            directionalLight.shadow.mapSize.width = 2048; // Shadow map resolution
+            directionalLight.shadow.mapSize.height = 2048;
+            directionalLight.shadow.camera.near = 0.5; // Near plane for shadow frustum
+            directionalLight.shadow.camera.far = 50; // Far plane for shadow frustum
+            directionalLight.shadow.camera.left = -10; // Left boundary of shadow frustum
+            directionalLight.shadow.camera.right = 10; // Right boundary
+            directionalLight.shadow.camera.top = 10; // Top boundary
+            directionalLight.shadow.camera.bottom = -10; // Bottom boundary
+            scene.add(directionalLight);
+
+            // Optional: Helper to visualize the directional light's shadow camera
+            // const helper = new THREE.CameraHelper(directionalLight.shadow.camera);
+            // scene.add(helper);
+
+            // GLTF Loader setup
+            const loader = new GLTFLoader();
+
+            // DRACOLoader setup for compressed models
+            const dracoLoader = new DRACOLoader();
+            // Set the path to the DRACO decoder files. These are typically hosted on a CDN.
+            dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
+            loader.setDRACOLoader(dracoLoader);
+
+            // Load the track model
+            loader.load(
+                'Game.Track.Section.001.glb',
+                function (gltf) {
+                    track = gltf.scene;
+                    track.traverse(function (node) {
+                        if (node.isMesh) {
+                            node.receiveShadow = true; // Track receives shadows
+                            node.castShadow = true; // Track can also cast shadows
+                        }
+                    });
+                    scene.add(track);
+                    console.log('Track loaded:', track);
+                },
+                undefined, // onProgress callback (optional)
+                function (error) {
+                    console.error('Error loading track model:', error);
+                }
+            );
+
+            // Load the ship model
+            loader.load(
+                'Game.Ship.glb',
+                function (gltf) {
+                    ship = gltf.scene;
+                    ship.traverse(function (node) {
+                        if (node.isMesh) {
+                            node.castShadow = true; // Ship casts shadows
+                            node.receiveShadow = true; // Ship receives shadows
+                        }
+                    });
+                    // Initial position for the ship (adjust as needed)
+                    ship.position.set(0, 0.5, 0); // Example: slightly above the origin
+                    scene.add(ship);
+                    console.log('Ship loaded:', ship);
+
+                    // Position the camera behind the ship once the ship is loaded
+                    // Adjust these values to get the desired camera angle and distance
+                    camera.position.set(ship.position.x, ship.position.y + 2, ship.position.z + 5);
+                    camera.lookAt(ship.position);
+                },
+                undefined, // onProgress callback (optional)
+                function (error) {
+                    console.error('Error loading ship model:', error);
+                }
+            );
+
+            // Handle window resizing
+            window.addEventListener('resize', onWindowResize, false);
+
+            // Start the animation loop
+            animate();
+        }
+
+        /**
+         * Updates the camera aspect ratio and renderer size on window resize.
+         */
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        /**
+         * The main animation loop.
+         */
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Render the scene
+            renderer.render(scene, camera);
+        }
+
+        // Initialize the scene when the window loads
+        window.onload = init;
+    </script>
+</body>
+</html>
