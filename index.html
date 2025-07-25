@@ -536,13 +536,23 @@
 
 
                         segmentBody.position.copy(position);
-                        segmentBody.quaternion.copy(orientation);
                         // --- Track Physics Body Rotation Fix ---
                         // Apply the same X-axis and Y-axis rotation to the physics body to match visual
                         let physicsRotation = new CANNON.Quaternion();
-                        physicsRotation.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2); // Rotate 90 degrees on X
-                        physicsRotation.mult(new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI), physicsRotation); // Rotate 180 degrees on Y
-                        segmentBody.quaternion.copy(physicsRotation); // Copy the combined rotation
+                        // Start with a clean quaternion
+                        let tempQuaternionX = new CANNON.Quaternion();
+                        let tempQuaternionY = new CANNON.Quaternion();
+
+                        // Rotate 90 degrees on X
+                        tempQuaternionX.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+                        // Rotate 180 degrees on Y
+                        tempQuaternionY.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI);
+
+                        // Combine rotations: first X, then Y
+                        // Cannon.js quaternion.mult(q1, q2) applies q1 then q2 if you read it from left to right.
+                        // So, to apply X then Y, it's Y.mult(X, result).
+                        tempQuaternionY.mult(tempQuaternionX, segmentBody.quaternion); // Store combined rotation directly in segmentBody.quaternion
+                        
                         console.log("Track segment physics body rotated.");
 
                         world.addBody(segmentBody);
