@@ -271,7 +271,7 @@
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             // Adjusted camera position to be closer to origin for potentially tiny models
-            camera.position.set(0, 10, -30); // Reset to a more standard view
+            camera.position.set(0, 5, -15); // Reverted to a closer, more standard view
 
             renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); // Use the globally defined canvas
             renderer.setSize(canvas.offsetWidth, canvas.offsetHeight); // Use the globally defined canvas
@@ -460,7 +460,7 @@
                     const pathPoints = [];
                     // Use original track segment length for path generation
                     // Adjusted track segment length multiplier based on feedback (3 times apart)
-                    const adjustedTrackSegmentLength = trackSegmentLength * 3; 
+                    const adjustedTrackSegmentLength = trackSegmentLength / 5; // Decreased by 5 times
                     for (let i = 0; i <= numberOfSegments; i++) {
                         pathPoints.push(new THREE.Vector3(0, 0, i * adjustedTrackSegmentLength)); 
                     }
@@ -486,7 +486,9 @@
                         segmentMesh.quaternion.copy(orientation); // Orient the segment along the path
                         // Corrected rotation for Blender Z-up to Three.js Y-up conversion for track segment
                         segmentMesh.rotation.x = -Math.PI / 2; // Rotate 90 degrees on X to lay flat
-                        segmentMesh.rotation.y += Math.PI; // Adjust rotation to face forward if needed based on model's default orientation
+                        // Removed segmentMesh.rotation.y += Math.PI; as it might be causing issues
+                        segmentMesh.rotation.z = Math.PI; // Flip 180 degrees on Z if the back is facing forward (common for inverted models)
+
 
                         scene.add(segmentMesh);
                         trackSegments.push(segmentMesh);
@@ -521,8 +523,9 @@
 
                         segmentBody.position.copy(position);
                         segmentBody.quaternion.copy(orientation);
-                        // Apply the same X-axis rotation to the physics body to match visual
+                        // Apply the same X-axis and Z-axis rotation to the physics body to match visual
                         segmentBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2); // Rotate 90 degrees on X
+                        segmentBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), Math.PI); // Rotate 180 degrees on Z (new local Z)
                         world.addBody(segmentBody);
                         console.log(`Track segment ${i} physics body created at position: ${segmentBody.position.x}, ${segmentBody.position.y}, ${segmentBody.position.z}`);
                     }
@@ -722,8 +725,7 @@
 
             // Camera follow behind and slightly above
             // This offset needs to be a THREE.Vector3 for applyQuaternion
-            const relativeCameraOffset = new THREE.Vector3(0, 5, -15); // Original offset
-
+            const relativeCameraOffset = new THREE.Vector3(0, 2, -5); // 2-3 times closer
             // Apply player's rotation (THREE.Quaternion from playerMesh) to the offset to get world coordinates
             const cameraOffset = relativeCameraOffset.applyQuaternion(playerMesh.quaternion);
 
@@ -731,7 +733,7 @@
             camera.position.copy(playerPos).add(cameraOffset);
 
             // Make camera look at the player
-            camera.lookAt(playerPos.x, playerPos.y + 2, playerPos.z); // Original look-at
+            camera.lookAt(playerPos.x, playerPos.y + 1, playerPos.z); // Adjusted look-at height
         }
 
 
@@ -767,8 +769,6 @@
                 }
 
                 // Update camera position and look-at
-                // The camera.lookAt line here was also causing issues by being called before updateCamera
-                // and potentially mixing types. Moved it into updateCamera.
                 updateCamera(); 
             }
 
