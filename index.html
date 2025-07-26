@@ -72,6 +72,29 @@
         const CAMERA_HEIGHT_Y = 1.2; // Height above ship (increased from 0.8 to 1.2)
         const CAMERA_LOOK_AT_Y_OFFSET = 0.5; // How much above the ship's base the camera looks
 
+        // Loading manager to track asset loading progress - MOVED INITIALIZATION HERE
+        const loadingManager = new THREE.LoadingManager();
+        const loadingScreen = document.getElementById('loading-screen');
+        const loadingBar = document.getElementById('loading-bar');
+
+        loadingManager.onProgress = function (url, itemsLoaded, itemsTotal) {
+            // Update the loading bar width based on progress
+            const progress = (itemsLoaded / itemsTotal) * 100;
+            loadingBar.style.width = progress + '%';
+        };
+
+        loadingManager.onLoad = function () {
+            // Hide loading screen once all assets are loaded
+            loadingScreen.style.display = 'none';
+            // Start the animation loop after loading
+            animate();
+        };
+
+        loadingManager.onError = function (url) {
+            console.error('Error loading ' + url);
+            loadingScreen.innerHTML = '<p style="color:red;">Error loading game assets. Please check console for details.</p>';
+        };
+
         // Event listeners for keyboard input
         document.addEventListener('keydown', (event) => {
             keysPressed[event.code] = true;
