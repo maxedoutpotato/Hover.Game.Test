@@ -58,28 +58,28 @@
         let ship;
         let mixer; // For animations (if any in GLB)
 
-        // Loading manager to track asset loading progress
-        const loadingManager = new THREE.LoadingManager();
-        const loadingScreen = document.getElementById('loading-screen');
-        const loadingBar = document.getElementById('loading-bar');
+        // Game state variables
+        let keysPressed = {}; // Object to track currently pressed keys
+        const SHIP_FORWARD_SPEED = 0.5; // Speed at which the track moves (simulating ship forward)
+        const SHIP_LATERAL_SPEED = 0.2; // Speed for left/right movement of the ship
+        const SHIP_ROTATION_SPEED = 0.05; // Speed for ship rotation around its Y-axis
 
-        loadingManager.onProgress = function (url, itemsLoaded, itemsTotal) {
-            // Update the loading bar width based on progress
-            const progress = (itemsLoaded / itemsTotal) * 100;
-            loadingBar.style.width = progress + '%';
-        };
+        let trackSegments = []; // Array to hold all track segment objects
+        let trackDepth = 0; // Will store the calculated depth (length) of a single track segment
 
-        loadingManager.onLoad = function () {
-            // Hide loading screen once all assets are loaded
-            loadingScreen.style.display = 'none';
-            // Start the animation loop after loading
-            animate();
-        };
+        // Camera constants for easy adjustment
+        const CAMERA_DISTANCE_Z = 3.0; // Distance behind ship (increased from 1.5 to 3.0)
+        const CAMERA_HEIGHT_Y = 1.2; // Height above ship (increased from 0.8 to 1.2)
+        const CAMERA_LOOK_AT_Y_OFFSET = 0.5; // How much above the ship's base the camera looks
 
-        loadingManager.onError = function (url) {
-            console.error('Error loading ' + url);
-            loadingScreen.innerHTML = '<p style="color:red;">Error loading game assets. Please check console for details.</p>';
-        };
+        // Event listeners for keyboard input
+        document.addEventListener('keydown', (event) => {
+            keysPressed[event.code] = true;
+        });
+
+        document.addEventListener('keyup', (event) => {
+            keysPressed[event.code] = false;
+        });
 
         // Initialize the scene, camera, and renderer
         function init() {
@@ -156,7 +156,7 @@
                     // Scale the ship 10 times larger
                     ship.scale.set(1.0, 1.0, 1.0);
                     ship.position.set(0, 0.5, 0); // Initial position relative to track
-                    // Rotate the ship 180 degrees around the Y-axis
+                    // Rotate the ship 180 degrees around the Y-axis so it faces the negative Z direction
                     ship.rotation.y = Math.PI;
                     scene.add(ship);
 
@@ -176,12 +176,14 @@
                         }
                     }
 
-                    // Position the camera behind the ship
-                    // Adjusted camera Y position to be higher (from +0.1 to +0.8)
-                    // Adjusted camera Z position to be further back (from +0.7 to +1.5)
-                    camera.position.set(ship.position.x, ship.position.y + 0.8, ship.position.z + 1.5);
-                    // Make the camera look slightly downwards relative to its higher position
-                    camera.lookAt(ship.position.x, ship.position.y + 0.5, ship.position.z);
+                    // Initial camera position relative to the ship
+                    // We calculate this dynamically in animate() for continuous following
+                    // This initial set is just for the first frame before animate loop runs
+                    const cameraLocalOffset = new THREE.Vector3(0, CAMERA_HEIGHT_Y, CAMERA_DISTANCE_Z);
+                    const cameraWorldPosition = new THREE.Vector3();
+                    cameraWorldPosition.copy(cameraLocalOffset).applyMatrix4(ship.matrixWorld);
+                    camera.position.copy(cameraWorldPosition);
+                    camera.lookAt(ship.position.x, ship.position.y + CAMERA_LOOK_AT_Y_OFFSET, ship.position.z);
                 },
                 undefined, // onProgress callback (handled by LoadingManager)
                 function (error) {
@@ -199,16 +201,18 @@
                     // Calculate bounding box to get depth (length) of the track segment
                     // This is crucial for correctly spacing the duplicates
                     const bbox = new THREE.Box3().setFromObject(singleTrackSegment);
-                    const trackDepth = bbox.max.z - bbox.min.z;
+                    trackDepth = bbox.max.z - bbox.min.z;
                     console.log("Calculated Track segment depth:", trackDepth);
 
                     const numberOfSegments = 10;
+                    // Create and position track segments
                     for (let i = 0; i < numberOfSegments; i++) {
                         const clonedTrack = singleTrackSegment.clone(); // Clone the original track
                         // Position each segment along the negative Z-axis to extend the track backward
                         // We multiply by 'i' to place them consecutively
                         clonedTrack.position.set(0, 0, -i * trackDepth);
                         scene.add(clonedTrack);
+                        trackSegments.push(clonedTrack); // Store in the array for later manipulation
                     }
                 },
                 undefined, // onProgress callback (handled by LoadingManager)
@@ -229,16 +233,60 @@
                 mixer.update(delta);
             }
 
-            // Keep camera behind the ship
-            // This ensures the camera follows the ship's movement
             if (ship) {
-                // Adjusted camera Y position to be higher (from +0.1 to +0.8)
-                // Adjusted camera Z position to be further back (from +0.7 to +1.5)
-                camera.position.x = ship.position.x;
-                camera.position.y = ship.position.y + 0.8;
-                camera.position.z = ship.position.z + 1.5;
-                // Make the camera look slightly downwards relative to its higher position
-                camera.lookAt(ship.position.x, ship.position.y + 0.5, ship.position.z);
+                // Ship Lateral Movement (A/D or Left/Right Arrow)
+                if (keysPressed['KeyA'] || keysPressed['ArrowLeft']) {
+                    ship.position.x -= SHIP_LATERAL_SPEED;
+                }
+                if (keysPressed['KeyD'] || keysPressed['ArrowRight']) {
+                    ship.position.x += SHIP_LATERAL_SPEED;
+                }
+
+                // Ship Rotation (Yaw)
+                // Adjust ship's rotation based on A/D keys for turning
+                if (keysPressed['KeyA'] || keysPressed['ArrowLeft']) {
+                    ship.rotation.y += SHIP_ROTATION_SPEED;
+                }
+                if (keysPressed['KeyD'] || keysPressed['ArrowRight']) {
+                    ship.rotation.y -= SHIP_ROTATION_SPEED;
+                }
+
+                // Track Scrolling (W/S or Up/Down Arrow)
+                // This simulates the ship moving forward/backward by moving the track
+                if (keysPressed['KeyW'] || keysPressed['ArrowUp']) {
+                    for (let i = 0; i < trackSegments.length; i++) {
+                        trackSegments[i].position.z += SHIP_FORWARD_SPEED; // Move track towards camera
+                        // If a track segment moves too far forward (past the camera's view)
+                        // reposition it to the very end of the track chain
+                        if (trackSegments[i].position.z > camera.position.z + trackDepth) {
+                            trackSegments[i].position.z -= trackSegments.length * trackDepth;
+                        }
+                    }
+                }
+                if (keysPressed['KeyS'] || keysPressed['ArrowDown']) {
+                    for (let i = 0; i < trackSegments.length; i++) {
+                        trackSegments[i].position.z -= SHIP_FORWARD_SPEED; // Move track away from camera
+                        // If a track segment moves too far backward (out of view behind)
+                        // reposition it to the very beginning of the track chain
+                        if (trackSegments[i].position.z < camera.position.z - (trackSegments.length * trackDepth) - trackDepth) {
+                            trackSegments[i].position.z += trackSegments.length * trackDepth;
+                        }
+                    }
+                }
+
+                // Camera following logic:
+                // Define a local offset for the camera relative to the ship's origin
+                const cameraLocalOffset = new THREE.Vector3(0, CAMERA_HEIGHT_Y, CAMERA_DISTANCE_Z);
+                // Create a new vector for the camera's world position
+                const cameraWorldPosition = new THREE.Vector3();
+                // Apply the ship's world matrix to the local offset to get the camera's world position
+                // This makes the camera follow the ship's rotation and position dynamically
+                cameraWorldPosition.copy(cameraLocalOffset).applyMatrix4(ship.matrixWorld);
+                camera.position.copy(cameraWorldPosition);
+
+                // Make the camera look at the ship's position, or slightly ahead/above it
+                // The lookAt Y target is adjusted to make the camera look slightly downwards
+                camera.lookAt(ship.position.x, ship.position.y + CAMERA_LOOK_AT_Y_OFFSET, ship.position.z);
             }
 
             renderer.render(scene, camera); // Render the scene
