@@ -89,16 +89,18 @@
         let ship, shipBody; // Three.js mesh and Cannon.js body for the ship
         let trackSegment; // Three.js mesh for a single track segment
         let trackBodies = []; // Array to hold Cannon.js bodies for track segments
+        let trackTopY = 0; // Will store the Y-coordinate of the top surface of the track
 
         // --- Physics Parameters ---
-        // Adjusted HOVER_HEIGHT to be higher
-        const HOVER_HEIGHT = 20.0; // Desired height above ground for hovering (increased further)
-        const HOVER_FORCE_STRENGTH = 100; // Strength of the upward hover force
+        // Adjusted HOVER_HEIGHT based on track surface
+        let HOVER_HEIGHT = 0; // This will be calculated dynamically based on track's top surface
+        const HOVER_DISTANCE_ABOVE_TRACK = 5.0; // Desired distance ship hovers above the track surface
+        const HOVER_FORCE_STRENGTH = 500; // Increased strength of the upward hover force for stability
         const HOVER_DAMPING = 0.9; // Damping to reduce vertical oscillations
         const SHIP_MASS = 100; // Mass of the ship for physics calculations
-        const FORWARD_ACCELERATION = 100; // Force applied for forward movement
-        const BRAKE_DECELERATION = 50; // Force applied for braking/reverse movement
-        const STEERING_FORCE = 50; // Torque applied for steering
+        const FORWARD_ACCELERATION = 500; // Increased force applied for forward movement
+        const BRAKE_DECELERATION = 250; // Increased force applied for braking/reverse movement
+        const STEERING_FORCE = 250; // Increased torque applied for steering
         const MAX_SPEED = 150; // Maximum forward speed of the ship
 
         // --- Keyboard Input State ---
@@ -130,9 +132,8 @@
 
             // Camera setup
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            // Initial camera position (will be updated dynamically to follow the ship)
-            camera.position.set(0, 10, -20);
-            camera.lookAt(0, 0, 0); // Point camera towards the origin
+            // Initial camera position will be set after ship and track are loaded
+            // to ensure it's relative to the ship's starting point without a pop.
 
             // Renderer setup
             renderer = new THREE.WebGLRenderer({ antialias: true }); // Enable anti-aliasing for smoother edges
@@ -175,47 +176,23 @@
             dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
             loader.setDRACOLoader(dracoLoader);
 
-            // Load Ship Model
-            loader.load(
-                'https://raw.githubusercontent.com/maxedoutpotato/Hover.Game.Test/main/Game.Ship.glb',
-                function (gltf) {
-                    ship = gltf.scene; // Get the scene from the loaded GLTF
-                    // Scaled up the ship 5 times
-                    ship.scale.set(2.5, 2.5, 2.5); // Scale up the ship to a suitable size
-                    // Initial position explicitly set higher than HOVER_HEIGHT to prevent initial "shot into air"
-                    ship.position.set(0, HOVER_HEIGHT + 5, 0);
-                    scene.add(ship); // Add ship to the Three.js scene
-
-                    // Create Cannon.js body for the ship
-                    // Using a simple box shape to approximate the ship's collision volume, scaled 5 times
-                    const shipShape = new CANNON.Box(new CANNON.Vec3(1.5 * 5, 0.5 * 5, 3 * 5)); // Scaled dimensions
-                    shipBody = new CANNON.Body({ mass: SHIP_MASS, shape: shipShape });
-                    shipBody.position.copy(ship.position); // Initialize physics body position
-                    world.addBody(shipBody); // Add ship body to the physics world
-
-                    // Link Three.js mesh to Cannon.js body for easy access
-                    ship.userData.physicsBody = shipBody;
-
-                    console.log('Ship loaded:', ship);
-                },
-                undefined, // Optional: progress callback
-                function (error) {
-                    console.error('Error loading ship model:', error);
-                    showMessageBox('Failed to load ship model. Please check the browser console for details.');
-                }
-            );
-
-            // Load Track Segment Model and create an array of segments
+            // Load Track Segment Model first to determine its top Y-coordinate
             loader.load(
                 'https://raw.githubusercontent.com/maxedoutpotato/Hover.Game.Test/main/Game.Track.Section.001.glb',
                 function (gltf) {
                     trackSegment = gltf.scene;
                     trackSegment.scale.set(10, 10, 10); // Scale up the track segment to a larger size
 
-                    // Get the bounding box of the track segment to determine its length
+                    // Get the bounding box of the track segment to determine its length and top Y
                     const bbox = new THREE.Box3().setFromObject(trackSegment);
                     const trackLength = bbox.max.z - bbox.min.z; // Calculate length along Z-axis
+                    // Determine the Y-coordinate of the track's top surface
+                    trackTopY = bbox.max.y * trackSegment.scale.y;
+                    HOVER_HEIGHT = trackTopY + HOVER_DISTANCE_ABOVE_TRACK; // Set hover height relative to track top
+
                     console.log('Track segment length (scaled):', trackLength * trackSegment.scale.z);
+                    console.log('Track top Y:', trackTopY);
+                    console.log('Calculated HOVER_HEIGHT:', HOVER_HEIGHT);
 
                     const NUM_SEGMENTS = 20; // Number of track segments to create
                     for (let i = 0; i < NUM_SEGMENTS; i++) {
@@ -239,11 +216,62 @@
                         segmentInstance.userData.physicsBody = trackBody; // Link Three.js mesh to Cannon.js body
                     }
                     console.log('Track segments loaded and array created.');
+
+                    // Now load the ship model after track properties are known
+                    loadShipModel();
                 },
                 undefined, // Optional: progress callback
                 function (error) {
                     console.error('Error loading track model:', error);
                     showMessageBox('Failed to load track model. Please check the browser console for details.');
+                }
+            );
+        }
+
+        // Function to load the ship model (called after track is loaded)
+        function loadShipModel() {
+            const loader = new THREE.GLTFLoader();
+            const dracoLoader = new THREE.DRACOLoader();
+            dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+            loader.setDRACOLoader(dracoLoader);
+
+            loader.load(
+                'https://raw.githubusercontent.com/maxedoutpotato/Hover.Game.Test/main/Game.Ship.glb',
+                function (gltf) {
+                    ship = gltf.scene; // Get the scene from the loaded GLTF
+                    ship.scale.set(2.5, 2.5, 2.5); // Scale up the ship to a suitable size
+                    // Initial position set directly at the calculated HOVER_HEIGHT
+                    ship.position.set(0, HOVER_HEIGHT, 0);
+                    scene.add(ship); // Add ship to the Three.js scene
+
+                    // Calculate bounding box of the scaled ship to create an accurate physics body
+                    const shipBbox = new THREE.Box3().setFromObject(ship);
+                    const shipDimensions = new CANNON.Vec3(
+                        (shipBbox.max.x - shipBbox.min.x) / 2, // Half width
+                        (shipBbox.max.y - shipBbox.min.y) / 2, // Half height
+                        (shipBbox.max.z - shipBbox.min.z) / 2  // Half depth
+                    );
+                    const shipShape = new CANNON.Box(shipDimensions);
+                    shipBody = new CANNON.Body({ mass: SHIP_MASS, shape: shipShape });
+                    shipBody.position.copy(ship.position); // Initialize physics body position
+                    world.addBody(shipBody); // Add ship body to the physics world
+
+                    // Link Three.js mesh to Cannon.js body for easy access
+                    ship.userData.physicsBody = shipBody;
+
+                    console.log('Ship loaded:', ship);
+                    console.log('Ship physics body dimensions:', shipDimensions);
+
+                    // Set initial camera position after ship is loaded and positioned
+                    const cameraOffset = new THREE.Vector3(0, 25, -75); // x, y (above), z (behind)
+                    cameraOffset.applyQuaternion(ship.quaternion); // Apply ship's initial rotation (which is identity)
+                    camera.position.copy(ship.position).add(cameraOffset);
+                    camera.lookAt(ship.position);
+                },
+                undefined, // Optional: progress callback
+                function (error) {
+                    console.error('Error loading ship model:', error);
+                    showMessageBox('Failed to load ship model. Please check the browser console for details.');
                 }
             );
         }
@@ -269,7 +297,7 @@
         // Handles key releases
         function onKeyUp(event) {
             switch (event.code) {
-                case 'KeyW': keys.w = false; break; // Corrected typo: should be keys.w = false;
+                case 'KeyW': keys.w = false; break;
                 case 'KeyS': keys.s = false; break;
                 case 'KeyA': keys.a = false; break;
                 case 'KeyD': keys.d = false; break;
