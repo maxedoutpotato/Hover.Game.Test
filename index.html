@@ -91,7 +91,8 @@
         let trackBodies = []; // Array to hold Cannon.js bodies for track segments
 
         // --- Physics Parameters ---
-        const HOVER_HEIGHT = 2.0; // Desired height above ground for hovering
+        // Adjusted HOVER_HEIGHT to be higher
+        const HOVER_HEIGHT = 10.0; // Desired height above ground for hovering (increased 5x)
         const HOVER_FORCE_STRENGTH = 100; // Strength of the upward hover force
         const HOVER_DAMPING = 0.9; // Damping to reduce vertical oscillations
         const SHIP_MASS = 100; // Mass of the ship for physics calculations
@@ -179,13 +180,14 @@
                 'https://raw.githubusercontent.com/maxedoutpotato/Hover.Game.Test/main/Game.Ship.glb',
                 function (gltf) {
                     ship = gltf.scene; // Get the scene from the loaded GLTF
-                    ship.scale.set(0.5, 0.5, 0.5); // Scale down the ship to a suitable size
+                    // Scaled up the ship 5 times
+                    ship.scale.set(2.5, 2.5, 2.5); // Scale up the ship to a suitable size
                     ship.position.set(0, HOVER_HEIGHT, 0); // Initial position slightly above ground
                     scene.add(ship); // Add ship to the Three.js scene
 
                     // Create Cannon.js body for the ship
-                    // Using a simple box shape to approximate the ship's collision volume
-                    const shipShape = new CANNON.Box(new CANNON.Vec3(1.5, 0.5, 3));
+                    // Using a simple box shape to approximate the ship's collision volume, scaled 5 times
+                    const shipShape = new CANNON.Box(new CANNON.Vec3(1.5 * 5, 0.5 * 5, 3 * 5)); // Scaled dimensions
                     shipBody = new CANNON.Body({ mass: SHIP_MASS, shape: shipShape });
                     shipBody.position.copy(ship.position); // Initialize physics body position
                     world.addBody(shipBody); // Add ship body to the physics world
@@ -217,14 +219,12 @@
                     const NUM_SEGMENTS = 20; // Number of track segments to create
                     for (let i = 0; i < NUM_SEGMENTS; i++) {
                         const segmentInstance = trackSegment.clone(); // Create a clone of the original segment
-                        // Position segments sequentially along the Z-axis
-                        segmentInstance.position.z = i * trackLength * trackSegment.scale.z;
+                        // Position segments sequentially along the Z-axis, reducing distance by 5 times
+                        segmentInstance.position.z = i * (trackLength * trackSegment.scale.z / 5);
                         scene.add(segmentInstance); // Add segment instance to the Three.js scene
 
                         // Create Cannon.js bodies for the track segments
                         // Using a simple box shape for the entire segment's collision.
-                        // For more precise collision, individual parts of the track model would need to be processed
-                        // and converted to more complex Cannon.js shapes (e.g., Trimesh).
                         const trackShape = new CANNON.Box(new CANNON.Vec3(
                             (bbox.max.x - bbox.min.x) / 2 * trackSegment.scale.x, // Half width
                             (bbox.max.y - bbox.min.y) / 2 * trackSegment.scale.y, // Half height
@@ -268,7 +268,7 @@
         // Handles key releases
         function onKeyUp(event) {
             switch (event.code) {
-                case 'KeyW': keys.w = false; break;
+                case 'KeyW': keys.s = false; break;
                 case 'KeyS': keys.s = false; break;
                 case 'KeyA': keys.a = false; break;
                 case 'KeyD': keys.d = false; break;
@@ -301,7 +301,6 @@
                 for (let i = 0; i < intersects.length; i++) {
                     const intersect = intersects[i];
                     // Check if the intersected object is part of a track segment's visual mesh
-                    // This is a simplified check. A more robust solution might involve specific collision layers.
                     if (intersect.object.parent && intersect.object.parent.userData.physicsBody && trackBodies.includes(intersect.object.parent.userData.physicsBody)) {
                         const distanceToGround = intersect.distance;
 
@@ -350,8 +349,8 @@
                 ship.quaternion.copy(shipBody.quaternion);
 
                 // --- Camera Follow ---
-                // Define the offset of the camera relative to the ship
-                const cameraOffset = new THREE.Vector3(0, 5, -15); // x, y (above), z (behind)
+                // Define the offset of the camera relative to the ship, scaled for the larger ship
+                const cameraOffset = new THREE.Vector3(0, 25, -75); // x, y (above), z (behind) - scaled 5x
                 // Apply the ship's current rotation to the camera offset
                 cameraOffset.applyQuaternion(ship.quaternion);
                 // Set camera position to ship's position plus the rotated offset
