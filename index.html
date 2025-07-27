@@ -40,6 +40,7 @@
         // Scene, Camera, Renderer setup
         let scene, camera, renderer;
         let ship; // Reference to the ship object
+        let isShipReady = false; // Flag to indicate if the ship object has been initialized
 
         // Constants for track generation
         const TRACK_SEGMENT_LENGTH = 50 / 6; // Length of each track segment, 6 times closer
@@ -101,12 +102,14 @@
                 ship.position.set(0, 1, 0); // Initial position
                 scene.add(ship);
                 setCameraBehindShip(); // Set camera after the ship model is loaded
+                isShipReady = true; // Mark ship as ready
             }, undefined, function (error) {
                 console.error('Error loading ship model:', error);
                 // Fallback to placeholder ship if GLB loading fails
                 console.warn('Using placeholder ship geometry.');
                 createPlaceholderShip();
                 setCameraBehindShip(); // Set camera even with placeholder
+                isShipReady = true; // Mark ship as ready even with placeholder
             });
 
             // --- Track Segment Model Loading ---
@@ -179,47 +182,14 @@
             camera.lookAt(ship.position);
         }
 
-        function onKeyDown(event) {
-            switch (event.key) {
-                case 'w':
-                    keys.w = true;
-                    break;
-                case 's':
-                    keys.s = true;
-                    break;
-                case 'a':
-                    keys.a = true;
-                    break;
-                case 'd':
-                    keys.d = true;
-                    break;
-            }
-        }
-
-        function onKeyUp(event) {
-            switch (event.key) {
-                case 'w':
-                    keys.w = false;
-                    break;
-                case 's':
-                    keys.s = false;
-                    break;
-                case 'a':
-                    keys.a = false;
-                    break;
-                case 'd':
-                    keys.d = false;
-            }
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
         function animate() {
             requestAnimationFrame(animate);
+
+            // Only proceed with ship movement and camera logic if the ship is ready
+            if (!isShipReady) {
+                renderer.render(scene, camera); // Still render to show loading screen or empty scene
+                return;
+            }
 
             // --- Ship Movement Logic ---
             if (keys.w) {
