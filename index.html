@@ -3,78 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hover Game Test - 3D Scene</title>
+    <title>Hover Game 3D Scene</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #1a1a2e; font-family: 'Inter', sans-serif; }
-        canvas { display: block; width: 100vw; height: 100vh; }
-        .info-box {
+        body { margin: 0; overflow: hidden; font-family: 'Inter', sans-serif; }
+        canvas { display: block; }
+        #info {
             position: absolute;
             top: 10px;
             left: 10px;
-            background-color: rgba(0, 0, 0, 0.7);
             color: white;
-            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
             border-radius: 8px;
             font-size: 14px;
-            z-index: 100;
-            max-width: 300px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            user-select: none;
+            pointer-events: none; /* Allows clicks to pass through to the canvas */
         }
     </style>
 </head>
 <body>
-    <div class="info-box">
-        <strong>Note:</strong> GLB models cannot be loaded directly from external GitHub URLs in this environment. Placeholders (box for ship, planes for track) are used as fallback.
-        <br>
-        To load your models, host them on a web server and update the `loader.load()` paths.
-        <br><br>
-        <strong>Controls:</strong> W (Accelerate), S (Brake/Reverse), A (Turn Left), D (Turn Right)
+    <div id="info">
+        Drag mouse to change camera angle.
     </div>
-
-    <!-- Three.js library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- GLTFLoader for loading .glb models -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-
-    <script type="module">
-        // Scene, Camera, Renderer setup
+    <script>
+        // Global variables for scene, camera, renderer, and objects
         let scene, camera, renderer;
-        let ship; // Reference to the ship object
-        let isShipReady = false; // Flag to indicate if the ship object has been initialized
+        let ship;
+        let isDragging = false;
+        let previousMouseX = 0;
+        let previousMouseY = 0;
 
-        // Constants for track generation
-        const TRACK_SEGMENT_LENGTH = 50 / 6; // Length of each track segment, 6 times closer
-        const NUMBER_OF_TRACK_SEGMENTS = 20; // Number of segments to create
-
-        // Ship movement variables
-        let shipSpeed = 0;
-        const maxSpeed = 0.5;
-        const acceleration = 0.02;
-        const deceleration = 0.03;
-        const turnSpeed = 0.03;
-
-        // Key press state
-        const keys = {
-            w: false,
-            s: false,
-            a: false,
-            d: false
-        };
-
-        // Function to handle window resizing - Moved to be defined earlier
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
+        // Function to initialize the 3D scene
         function init() {
             // Create the scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x1a1a2e); // Dark background for space/futuristic feel
+            scene.background = new THREE.Color(0x222233); // Dark blue background
 
             // Create the camera
-            // FOV, Aspect Ratio, Near Clipping Plane, Far Clipping Plane
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
             // Create the renderer
@@ -82,169 +49,150 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            // --- Lighting ---
-            // Ambient light: illuminates all objects in the scene equally from all directions.
-            // Helps to prevent completely dark areas.
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
+            // Add lighting to the scene
+            addLighting();
+
+            // Load 3D models
+            loadModels();
+
+            // Set up event listeners for window resize and mouse interaction
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+        }
+
+        // Function to add lighting to the scene
+        function addLighting() {
+            // Ambient light provides a soft, overall illumination
+            const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft white light, increased intensity
             scene.add(ambientLight);
 
-            // Directional light: simulates sunlight, objects cast shadows.
-            // Good for primary light source.
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(5, 10, 7); // Position the light source
-            directionalLight.castShadow = true; // Enable shadows for this light (requires renderer.shadowMap.enabled = true)
+            // Directional light mimics sunlight, coming from a specific direction
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); // White light, increased intensity
+            directionalLight.position.set(5, 10, 7); // Position the light
+            directionalLight.castShadow = true; // Enable shadows (requires renderer.shadowMap.enabled = true)
             scene.add(directionalLight);
 
-            // Initialize GLTFLoader
+            // Optional: Add a second directional light for better overall illumination
+            const directionalLight2 = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight2.position.set(-5, 5, -5);
+            scene.add(directionalLight2);
+        }
+
+        // Function to load GLB models
+        function loadModels() {
             const loader = new THREE.GLTFLoader();
 
-            // --- Ship Model Loading ---
-            // IMPORTANT: Replace 'path/to/Game.Ship.glb' with the actual path to your model
-            // when running this on a web server or locally.
-            // For example, if 'Game.Ship.glb' is in the same directory as your HTML file, use 'Game.Ship.glb'.
-            loader.load('path/to/Game.Ship.glb', function (gltf) {
-                ship = gltf.scene;
-                // Adjust scale and position as needed after inspecting your model
-                ship.scale.set(0.1, 0.1, 0.1); // Example scale, adjust based on your model's size
-                ship.position.set(0, 1, 0); // Initial position
-                scene.add(ship);
-                setCameraBehindShip(); // Set camera after the ship model is loaded
-                isShipReady = true; // Mark ship as ready
-            }, undefined, function (error) {
-                console.error('Error loading ship model:', error);
-                // Fallback to placeholder ship if GLB loading fails
-                console.warn('Using placeholder ship geometry.');
-                createPlaceholderShip();
-                setCameraBehindShip(); // Set camera even with placeholder
-                isShipReady = true; // Mark ship as ready even with placeholder
-            });
+            // Load the ship model
+            loader.load(
+                'https://raw.githubusercontent.com/maxedoutpotato/Hover.Game.Test/main/Game.Ship.glb',
+                function (gltf) {
+                    ship = gltf.scene;
+                    ship.scale.set(0.5, 0.5, 0.5); // Scale down the ship
+                    ship.position.set(0, 0.5, 0); // Position the ship slightly above the track
+                    scene.add(ship);
 
-            // --- Track Segment Model Loading ---
-            // IMPORTANT: Replace 'path/to/Game.Track.Section.001.glb' with the actual path to your model
-            // when running this on a web server or locally.
-            loader.load('path/to/Game.Track.Section.001.glb', function (gltf) {
-                const trackSegmentModel = gltf.scene;
-                // Adjust scale as needed after inspecting your model
-                trackSegmentModel.scale.set(0.1, 0.1, 0.1); // Example scale
-                createTrackSegments(trackSegmentModel);
-            }, undefined, function (error) {
-                console.error('Error loading track segment model:', error);
-                // Fallback to placeholder track segments if GLB loading fails
-                console.warn('Using placeholder track segments.');
-                createPlaceholderTrackSegments();
-            });
+                    // Position the camera behind the ship
+                    // Adjust these values to get the desired camera angle and distance
+                    camera.position.set(0, 2, 5); // x, y, z relative to the ship
+                    camera.lookAt(ship.position); // Make the camera look at the ship
+                },
+                undefined, // Optional: called while loading is progressing
+                function (error) {
+                    console.error('Error loading ship model:', error);
+                }
+            );
 
-            // Handle window resizing
-            window.addEventListener('resize', onWindowResize, false);
-            // Event listeners for keyboard input
-            window.addEventListener('keydown', onKeyDown, false);
-            window.addEventListener('keyup', onKeyUp, false);
+            // Load the track segment model and create an array
+            loader.load(
+                'https://raw.githubusercontent.com/maxedoutpotato/Hover.Game.Test/main/Game.Track.Section.001.glb',
+                function (gltf) {
+                    const trackSegment = gltf.scene;
+                    trackSegment.scale.set(0.5, 0.5, 0.5); // Scale down the track
+
+                    const numberOfSegments = 20;
+                    const segmentLength = 10; // Approximate length of the track segment along Z-axis
+
+                    for (let i = 0; i < numberOfSegments; i++) {
+                        const clonedSegment = trackSegment.clone();
+                        // Position segments along the negative Z-axis, no distance between them
+                        clonedSegment.position.set(0, 0, -i * segmentLength);
+                        scene.add(clonedSegment);
+                    }
+                },
+                undefined, // Optional: called while loading is progressing
+                function (error) {
+                    console.error('Error loading track model:', error);
+                }
+            );
         }
 
-        function createPlaceholderShip() {
-            const shipGeometry = new THREE.BoxGeometry(2, 0.5, 4); // Width, Height, Depth
-            const shipMaterial = new THREE.MeshPhongMaterial({ color: 0x007bff, emissive: 0x002255 }); // Blue with a slight glow
-            ship = new THREE.Mesh(shipGeometry, shipMaterial);
-            ship.position.set(0, 1, 0); // Initial position of the ship
-            scene.add(ship);
-        }
-
-        function createTrackSegments(segmentMesh) {
-            for (let i = 0; i < NUMBER_OF_TRACK_SEGMENTS; i++) {
-                const segment = segmentMesh.clone();
-                // Position segments along the negative Z-axis to appear in front of the ship
-                segment.position.z = -(i * TRACK_SEGMENT_LENGTH);
-                scene.add(segment);
-            }
-        }
-
-        function createPlaceholderTrackSegments() {
-            const trackGeometry = new THREE.PlaneGeometry(20, TRACK_SEGMENT_LENGTH); // Width, Length
-            const trackMaterial = new THREE.MeshPhongMaterial({ color: 0x333333, side: THREE.DoubleSide }); // Dark grey
-            const trackSegmentPlaceholder = new THREE.Mesh(trackGeometry, trackMaterial);
-            trackSegmentPlaceholder.rotation.x = -Math.PI / 2; // Rotate to lie flat on the XZ plane
-
-            for (let i = 0; i < NUMBER_OF_TRACK_SEGMENTS; i++) {
-                const segment = trackSegmentPlaceholder.clone();
-                segment.position.z = -(i * TRACK_SEGMENT_LENGTH);
-                scene.add(segment);
-
-                // Optional: Add some simple visual markers on the track
-                const markerGeometry = new THREE.BoxGeometry(0.5, 0.1, 0.5);
-                const markerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 }); // Green markers
-                const leftMarker = new THREE.Mesh(markerGeometry, markerMaterial);
-                leftMarker.position.set(-9, 0.1, segment.position.z);
-                scene.add(leftMarker);
-
-                const rightMarker = new THREE.Mesh(markerGeometry, markerMaterial);
-                rightMarker.position.set(9, 0.1, segment.position.z);
-                scene.add(rightMarker);
-            }
-        }
-
-        function setCameraBehindShip() {
-            // Initial camera position behind the ship
-            // This will be dynamically updated in the animate loop
-            camera.position.set(ship.position.x, ship.position.y + 5, ship.position.z + 10);
-            camera.lookAt(ship.position);
-        }
-
+        // Animation loop
         function animate() {
             requestAnimationFrame(animate);
-
-            // Only proceed with ship movement and camera logic if the ship is ready
-            if (!isShipReady) {
-                renderer.render(scene, camera); // Still render to show loading screen or empty scene
-                return;
-            }
-
-            // --- Ship Movement Logic ---
-            if (keys.w) {
-                shipSpeed = Math.min(shipSpeed + acceleration, maxSpeed);
-            } else if (keys.s) {
-                shipSpeed = Math.max(shipSpeed - deceleration, -maxSpeed / 2); // Allow reverse at half max speed
-            } else {
-                // Decelerate when no forward/backward key is pressed
-                if (shipSpeed > 0) {
-                    shipSpeed = Math.max(shipSpeed - deceleration / 2, 0);
-                } else if (shipSpeed < 0) {
-                    shipSpeed = Math.min(shipSpeed + deceleration / 2, 0);
-                }
-            }
-
-            // Apply movement based on ship's current rotation
-            ship.position.x -= Math.sin(ship.rotation.y) * shipSpeed;
-            ship.position.z -= Math.cos(ship.rotation.y) * shipSpeed;
-
-            // Turning
-            if (keys.a) {
-                ship.rotation.y += turnSpeed;
-            }
-            if (keys.d) {
-                ship.rotation.y -= turnSpeed;
-            }
-
-            // --- Camera Follow Logic ---
-            // Calculate target camera position behind the ship
-            const cameraOffset = new THREE.Vector3(0, 5, 10); // Offset: height, distance behind
-            cameraOffset.applyQuaternion(ship.quaternion); // Apply ship's rotation to the offset
-
-            const targetCameraPosition = new THREE.Vector3().copy(ship.position).add(cameraOffset);
-
-            // Smoothly interpolate camera position
-            camera.position.lerp(targetCameraPosition, 0.1); // Adjust 0.1 for more/less smoothness
-
-            // Make camera look at the ship (or slightly ahead for a better view)
-            camera.lookAt(ship.position);
-
             renderer.render(scene, camera);
         }
 
-        // Start the animation on window load.
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Mouse interaction for camera control
+        function onMouseDown(event) {
+            isDragging = true;
+            previousMouseX = event.clientX;
+            previousMouseY = event.clientY;
+        }
+
+        function onMouseUp() {
+            isDragging = false;
+        }
+
+        function onMouseMove(event) {
+            if (!isDragging) return;
+
+            const deltaX = event.clientX - previousMouseX;
+            const deltaY = event.clientY - previousMouseY;
+
+            // Rotate camera around the ship
+            if (ship) {
+                const rotationSpeed = 0.005;
+                const cameraOffset = new THREE.Vector3().subVectors(camera.position, ship.position);
+
+                // Rotate around Y-axis (horizontal drag)
+                const angleY = deltaX * rotationSpeed;
+                cameraOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), -angleY);
+
+                // Rotate around X-axis (vertical drag) - limit vertical rotation to prevent flipping
+                const angleX = deltaY * rotationSpeed;
+                const currentAngleX = Math.atan2(cameraOffset.y, Math.sqrt(cameraOffset.x * cameraOffset.x + cameraOffset.z * cameraOffset.z));
+                const newAngleX = currentAngleX - angleX;
+                // Clamp the vertical angle to prevent camera from going below or too far above
+                const minAngle = Math.PI / 6; // 30 degrees
+                const maxAngle = Math.PI / 2 - 0.1; // Almost 90 degrees (looking straight down)
+                if (newAngleX > minAngle && newAngleX < maxAngle) {
+                    const axisX = new THREE.Vector3().crossVectors(cameraOffset.normalize(), new THREE.Vector3(0, 1, 0)).normalize();
+                    cameraOffset.applyAxisAngle(axisX, -angleX);
+                }
+
+                camera.position.copy(ship.position).add(cameraOffset);
+                camera.lookAt(ship.position);
+            }
+
+            previousMouseX = event.clientX;
+            previousMouseY = event.clientY;
+        }
+
+
+        // Initialize the scene when the window loads
         window.onload = function () {
             init();
             animate();
-        }
+        };
     </script>
 </body>
 </html>
