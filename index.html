@@ -3,329 +3,368 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hover Game Test</title>
+    <title>Hover Game</title>
+    <!-- Tailwind CSS for basic styling (e.g., info box) -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #1a1a1a; font-family: 'Inter', sans-serif; }
-        canvas { display: block; width: 100vw; height: 100vh; } /* Canvas fills the entire viewport */
-        #loading-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
+        /* Basic styling for body and canvas */
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: "Inter", sans-serif;
+            background-color: #1a1a2e; /* Match scene background */
+        }
+        canvas {
+            display: block;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        }
+        /* Info display for speed and controls */
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
             color: white;
-            font-size: 2em;
+            font-size: 16px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 100;
+        }
+        /* Custom message box for alerts */
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
             z-index: 1000;
-            flex-direction: column;
+            display: none; /* Hidden by default */
+            text-align: center;
         }
-        #loading-bar-container {
-            width: 50%;
-            background: #333;
-            height: 10px;
+        .message-box button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
             border-radius: 5px;
-            overflow: hidden;
-            margin-top: 20px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background-color 0.3s ease;
         }
-        #loading-bar {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, #00f, #0f0);
-            border-radius: 5px;
-            transition: width 0.1s linear;
+        .message-box button:hover {
+            background-color: #45a049;
         }
     </style>
-    <!-- Include Three.js library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Include GLTFLoader for loading GLB models -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <!-- Include DRACOLoader for handling Draco compressed GLB models -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 </head>
 <body>
-    <div id="loading-screen">
-        <p>Loading Game Assets...</p>
-        <div id="loading-bar-container">
-            <div id="loading-bar"></div>
-        </div>
+    <!-- Info overlay for controls and ship speed -->
+    <div id="info">
+        <p>Use W/S for acceleration/deceleration, A/D for steering.</p>
+        <p>Ship Speed: <span id="shipSpeed">0.00</span></p>
     </div>
-    <script type="module">
-        // Global variables for scene, camera, renderer, and models
-        let scene, camera, renderer;
-        let ship;
-        let mixer; // For animations (if any in GLB)
+    <!-- Custom message box (instead of alert()) -->
+    <div id="messageBox" class="message-box">
+        <p id="messageContent"></p>
+        <button onclick="hideMessageBox()">OK</button>
+    </div>
 
-        // Game state variables
-        let keysPressed = {}; // Object to track currently pressed keys
-        const SHIP_FORWARD_SPEED = 0.5; // Speed at which the track moves (simulating ship forward)
-        const SHIP_LATERAL_SPEED = 0.2; // Speed for left/right movement of the ship
-        const SHIP_ROTATION_SPEED = 0.05; // Speed for ship rotation around its Y-axis
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- GLTFLoader for loading .glb models -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- Cannon.js for 3D physics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
 
-        let trackSegments = []; // Array to hold all track segment objects
-        let trackDepth = 0; // Will store the calculated depth (length) of a single track segment
+    <script>
+        // --- Global Variables ---
+        let scene, camera, renderer; // Three.js components
+        let world; // Cannon.js physics world
+        let ship, shipBody; // Three.js mesh and Cannon.js body for the ship
+        let trackSegment; // Three.js mesh for a single track segment
+        let trackBodies = []; // Array to hold Cannon.js bodies for track segments
 
-        // Camera constants for easy adjustment
-        const CAMERA_DISTANCE_Z = 3.0; // Distance behind ship (increased from 1.5 to 3.0)
-        const CAMERA_HEIGHT_Y = 1.2; // Height above ship (increased from 0.8 to 1.2)
-        const CAMERA_LOOK_AT_Y_OFFSET = 0.5; // How much above the ship's base the camera looks
+        // --- Physics Parameters ---
+        const HOVER_HEIGHT = 2.0; // Desired height above ground for hovering
+        const HOVER_FORCE_STRENGTH = 100; // Strength of the upward hover force
+        const HOVER_DAMPING = 0.9; // Damping to reduce vertical oscillations
+        const SHIP_MASS = 100; // Mass of the ship for physics calculations
+        const FORWARD_ACCELERATION = 100; // Force applied for forward movement
+        const BRAKE_DECELERATION = 50; // Force applied for braking/reverse movement
+        const STEERING_FORCE = 50; // Torque applied for steering
+        const MAX_SPEED = 150; // Maximum forward speed of the ship
 
-        // Loading manager to track asset loading progress - MOVED INITIALIZATION HERE
-        const loadingManager = new THREE.LoadingManager();
-        const loadingScreen = document.getElementById('loading-screen');
-        const loadingBar = document.getElementById('loading-bar');
-
-        loadingManager.onProgress = function (url, itemsLoaded, itemsTotal) {
-            // Update the loading bar width based on progress
-            const progress = (itemsLoaded / itemsTotal) * 100;
-            loadingBar.style.width = progress + '%';
+        // --- Keyboard Input State ---
+        const keys = {
+            w: false, // Forward
+            s: false, // Backward/Brake
+            a: false, // Turn Left
+            d: false  // Turn Right
         };
 
-        loadingManager.onLoad = function () {
-            // Hide loading screen once all assets are loaded
-            loadingScreen.style.display = 'none';
-            // Start the animation loop after loading
-            animate();
-        };
-
-        loadingManager.onError = function (url) {
-            console.error('Error loading ' + url);
-            loadingScreen.innerHTML = '<p style="color:red;">Error loading game assets. Please check console for details.</p>';
-        };
-
-        // Event listeners for keyboard input
-        document.addEventListener('keydown', (event) => {
-            keysPressed[event.code] = true;
-        });
-
-        document.addEventListener('keyup', (event) => {
-            keysPressed[event.code] = false;
-        });
-
-        // Initialize the scene, camera, and renderer
-        function init() {
-            // Create a new Three.js scene
-            scene = new THREE.Scene();
-            // Set background color to a dark blue/purple for a futuristic feel
-            scene.background = new THREE.Color(0x1a0a30);
-
-            // Set up the camera (PerspectiveCamera)
-            // FOV: Field of View (vertical, in degrees)
-            // Aspect: Aspect ratio (width / height)
-            // Near: Near clipping plane
-            // Far: Far clipping plane
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-
-            // Create a WebGL renderer
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            // Set renderer size to fill the window
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            // Append the renderer's DOM element to the body
-            document.body.appendChild(renderer.domElement);
-
-            // Add lighting to the scene
-            addLighting();
-
-            // Load the GLB models
-            loadModels();
-
-            // Handle window resizing
-            window.addEventListener('resize', onWindowResize, false);
+        // --- Custom Message Box Functions ---
+        // Displays a message box to the user
+        function showMessageBox(message) {
+            document.getElementById('messageContent').innerText = message;
+            document.getElementById('messageBox').style.display = 'block';
         }
 
-        // Function to add various lights to the scene
-        function addLighting() {
-            // Ambient light: illuminates all objects equally from all directions
-            // Does not cast shadows, good for general brightness
-            const ambientLight = new THREE.AmbientLight(0x404040, 2); // Color, Intensity
+        // Hides the message box
+        function hideMessageBox() {
+            document.getElementById('messageBox').style.display = 'none';
+        }
+
+        // --- Initialization Function ---
+        // Sets up the Three.js scene, camera, renderer, and Cannon.js physics world
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e); // Dark blue background color
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            // Initial camera position (will be updated dynamically to follow the ship)
+            camera.position.set(0, 10, -20);
+            camera.lookAt(0, 0, 0); // Point camera towards the origin
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true }); // Enable anti-aliasing for smoother edges
+            renderer.setSize(window.innerWidth, window.innerHeight); // Set renderer size to full window
+            renderer.setPixelRatio(window.devicePixelRatio); // Adjust for high-DPI screens
+            document.body.appendChild(renderer.domElement); // Add renderer's canvas to the DOM
+
+            // Lighting setup
+            const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft white ambient light
             scene.add(ambientLight);
 
-            // Directional light: acts like sunlight, coming from a specific direction
-            // Good for casting shadows and defining form
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); // Color, Intensity
-            directionalLight.position.set(5, 10, 7); // Position of the light source
-            directionalLight.castShadow = true; // Enable shadow casting for this light
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); // Strong white directional light
+            directionalLight.position.set(5, 10, 7); // Position the light source
+            directionalLight.castShadow = true; // Enable shadows from this light (requires renderer.shadowMap.enabled = true)
             scene.add(directionalLight);
 
-            // Optional: Add a second directional light for more dynamic lighting
-            const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight2.position.set(-5, 5, -5);
-            scene.add(directionalLight2);
+            // Physics world setup (Cannon.js)
+            world = new CANNON.World();
+            world.gravity.set(0, -9.82, 0); // Set standard Earth gravity along the Y-axis
+            world.broadphase = new CANNON.NaiveBroadphase(); // Simple broadphase for collision detection
+            world.solver.iterations = 10; // Increase solver iterations for better stability (more accurate physics)
 
-            // Optional: Add a hemisphere light for more natural outdoor lighting
-            // Sky color, ground color, intensity
-            const hemisphereLight = new THREE.HemisphereLight(0xb1e1ff, 0xb97a20, 0.5);
-            scene.add(hemisphereLight);
+            // Load 3D models (ship and track)
+            loadModels();
+
+            // Add event listeners for window resize and keyboard input
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
         }
 
-        // Function to load 3D models (GLB format)
+        // --- Model Loading Function ---
+        // Loads the GLB models for the ship and track segment
         function loadModels() {
-            const gltfLoader = new THREE.GLTFLoader(loadingManager);
+            const loader = new THREE.GLTFLoader();
 
-            // Configure DRACOLoader for GLTFLoader
-            const dracoLoader = new THREE.DRACOLoader();
-            // Set the path to the Draco decoder files (usually in /examples/js/libs/draco/)
-            // These files should be placed in your project's root or a specified path
-            dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
-            gltfLoader.setDRACOLoader(dracoLoader);
-
-            // Load the ship model
-            gltfLoader.load(
-                'Game.Ship.glb',
+            // Load Ship Model
+            loader.load(
+                'https://raw.githubusercontent.com/maxedoutpotato/Hover.Game.Test/main/Game.Ship.glb',
                 function (gltf) {
-                    ship = gltf.scene;
-                    // Scale the ship 10 times larger
-                    ship.scale.set(1.0, 1.0, 1.0);
-                    ship.position.set(0, 0.5, 0); // Initial position relative to track
-                    // Rotate the ship 180 degrees around the Y-axis so it faces the negative Z direction
-                    ship.rotation.y = Math.PI;
-                    scene.add(ship);
+                    ship = gltf.scene; // Get the scene from the loaded GLTF
+                    ship.scale.set(0.5, 0.5, 0.5); // Scale down the ship to a suitable size
+                    ship.position.set(0, HOVER_HEIGHT, 0); // Initial position slightly above ground
+                    scene.add(ship); // Add ship to the Three.js scene
 
-                    // If the ship has animations, set up an animation mixer
-                    // Play only the 'Armature.Idle' animation
-                    if (gltf.animations && gltf.animations.length) {
-                        mixer = new THREE.AnimationMixer(ship);
-                        const idleClip = THREE.AnimationClip.findByName(gltf.animations, 'Armature.Idle');
-                        if (idleClip) {
-                            mixer.clipAction(idleClip).play();
-                        } else {
-                            console.warn("Animation 'Armature.Idle' not found. Playing first available animation.");
-                            // Fallback: play the first animation if idle not found
-                            if (gltf.animations.length > 0) {
-                                mixer.clipAction(gltf.animations[0]).play();
-                            }
-                        }
-                    }
+                    // Create Cannon.js body for the ship
+                    // Using a simple box shape to approximate the ship's collision volume
+                    const shipShape = new CANNON.Box(new CANNON.Vec3(1.5, 0.5, 3));
+                    shipBody = new CANNON.Body({ mass: SHIP_MASS, shape: shipShape });
+                    shipBody.position.copy(ship.position); // Initialize physics body position
+                    world.addBody(shipBody); // Add ship body to the physics world
 
-                    // Initial camera position relative to the ship
-                    // We calculate this dynamically in animate() for continuous following
-                    // This initial set is just for the first frame before animate loop runs
-                    const cameraLocalOffset = new THREE.Vector3(0, CAMERA_HEIGHT_Y, CAMERA_DISTANCE_Z);
-                    const cameraWorldPosition = new THREE.Vector3();
-                    cameraWorldPosition.copy(cameraLocalOffset).applyMatrix4(ship.matrixWorld);
-                    camera.position.copy(cameraWorldPosition);
-                    camera.lookAt(ship.position.x, ship.position.y + CAMERA_LOOK_AT_Y_OFFSET, ship.position.z);
+                    // Link Three.js mesh to Cannon.js body for easy access
+                    ship.userData.physicsBody = shipBody;
+
+                    console.log('Ship loaded:', ship);
                 },
-                undefined, // onProgress callback (handled by LoadingManager)
+                undefined, // Optional: progress callback
                 function (error) {
-                    console.error('An error occurred while loading the ship model:', error);
+                    console.error('Error loading ship model:', error);
+                    showMessageBox('Failed to load ship model. Please check the browser console for details.');
                 }
             );
 
-            // Load the track model and duplicate it
-            gltfLoader.load(
-                'Game.Track.Section.001.glb',
+            // Load Track Segment Model and create an array of segments
+            loader.load(
+                'https://raw.githubusercontent.com/maxedoutpotato/Hover.Game.Test/main/Game.Track.Section.001.glb',
                 function (gltf) {
-                    const singleTrackSegment = gltf.scene;
-                    singleTrackSegment.scale.set(1, 1, 1); // Ensure correct scale for the base segment
+                    trackSegment = gltf.scene;
+                    trackSegment.scale.set(10, 10, 10); // Scale up the track segment to a larger size
 
-                    // Calculate bounding box to get depth (length) of the track segment
-                    // This is crucial for correctly spacing the duplicates
-                    const bbox = new THREE.Box3().setFromObject(singleTrackSegment);
-                    trackDepth = bbox.max.z - bbox.min.z;
-                    console.log("Calculated Track segment depth:", trackDepth);
+                    // Get the bounding box of the track segment to determine its length
+                    const bbox = new THREE.Box3().setFromObject(trackSegment);
+                    const trackLength = bbox.max.z - bbox.min.z; // Calculate length along Z-axis
+                    console.log('Track segment length (scaled):', trackLength * trackSegment.scale.z);
 
-                    const numberOfSegments = 10;
-                    // Create and position track segments
-                    for (let i = 0; i < numberOfSegments; i++) {
-                        const clonedTrack = singleTrackSegment.clone(); // Clone the original track
-                        // Position each segment along the negative Z-axis to extend the track backward
-                        // We multiply by 'i' to place them consecutively
-                        clonedTrack.position.set(0, 0, -i * trackDepth);
-                        scene.add(clonedTrack);
-                        trackSegments.push(clonedTrack); // Store in the array for later manipulation
+                    const NUM_SEGMENTS = 20; // Number of track segments to create
+                    for (let i = 0; i < NUM_SEGMENTS; i++) {
+                        const segmentInstance = trackSegment.clone(); // Create a clone of the original segment
+                        // Position segments sequentially along the Z-axis
+                        segmentInstance.position.z = i * trackLength * trackSegment.scale.z;
+                        scene.add(segmentInstance); // Add segment instance to the Three.js scene
+
+                        // Create Cannon.js bodies for the track segments
+                        // Using a simple box shape for the entire segment's collision.
+                        // For more precise collision, individual parts of the track model would need to be processed
+                        // and converted to more complex Cannon.js shapes (e.g., Trimesh).
+                        const trackShape = new CANNON.Box(new CANNON.Vec3(
+                            (bbox.max.x - bbox.min.x) / 2 * trackSegment.scale.x, // Half width
+                            (bbox.max.y - bbox.min.y) / 2 * trackSegment.scale.y, // Half height
+                            trackLength / 2 * trackSegment.scale.z // Half depth
+                        ));
+                        const trackBody = new CANNON.Body({ mass: 0 }); // Mass 0 makes it a static (immovable) body
+                        trackBody.addShape(trackShape);
+                        trackBody.position.copy(segmentInstance.position); // Set physics body position
+                        world.addBody(trackBody); // Add track body to the physics world
+                        trackBodies.push(trackBody); // Store reference to the track body
+                        segmentInstance.userData.physicsBody = trackBody; // Link Three.js mesh to Cannon.js body
                     }
+                    console.log('Track segments loaded and array created.');
                 },
-                undefined, // onProgress callback (handled by LoadingManager)
+                undefined, // Optional: progress callback
                 function (error) {
-                    console.error('An error occurred while loading the track model:', error);
+                    console.error('Error loading track model:', error);
+                    showMessageBox('Failed to load track model. Please check the browser console for details.');
                 }
             );
         }
 
-        // Animation loop
-        function animate() {
-            requestAnimationFrame(animate); // Request the next frame
-
-            const delta = 0.016; // Approximate time per frame (60 FPS)
-
-            // Update animations if mixer exists
-            if (mixer) {
-                mixer.update(delta);
-            }
-
-            if (ship) {
-                // Ship Lateral Movement (A/D or Left/Right Arrow)
-                if (keysPressed['KeyA'] || keysPressed['ArrowLeft']) {
-                    ship.position.x -= SHIP_LATERAL_SPEED;
-                }
-                if (keysPressed['KeyD'] || keysPressed['ArrowRight']) {
-                    ship.position.x += SHIP_LATERAL_SPEED;
-                }
-
-                // Ship Rotation (Yaw)
-                // Adjust ship's rotation based on A/D keys for turning
-                if (keysPressed['KeyA'] || keysPressed['ArrowLeft']) {
-                    ship.rotation.y += SHIP_ROTATION_SPEED;
-                }
-                if (keysPressed['KeyD'] || keysPressed['ArrowRight']) {
-                    ship.rotation.y -= SHIP_ROTATION_SPEED;
-                }
-
-                // Track Scrolling (W/S or Up/Down Arrow)
-                // This simulates the ship moving forward/backward by moving the track
-                if (keysPressed['KeyW'] || keysPressed['ArrowUp']) {
-                    for (let i = 0; i < trackSegments.length; i++) {
-                        trackSegments[i].position.z += SHIP_FORWARD_SPEED; // Move track towards camera
-                        // If a track segment moves too far forward (past the camera's view)
-                        // reposition it to the very end of the track chain
-                        if (trackSegments[i].position.z > camera.position.z + trackDepth) {
-                            trackSegments[i].position.z -= trackSegments.length * trackDepth;
-                        }
-                    }
-                }
-                if (keysPressed['KeyS'] || keysPressed['ArrowDown']) {
-                    for (let i = 0; i < trackSegments.length; i++) {
-                        trackSegments[i].position.z -= SHIP_FORWARD_SPEED; // Move track away from camera
-                        // If a track segment moves too far backward (out of view behind)
-                        // reposition it to the very beginning of the track chain
-                        if (trackSegments[i].position.z < camera.position.z - (trackSegments.length * trackDepth) - trackDepth) {
-                            trackSegments[i].position.z += trackSegments.length * trackDepth;
-                        }
-                    }
-                }
-
-                // Camera following logic:
-                // Define a local offset for the camera relative to the ship's origin
-                const cameraLocalOffset = new THREE.Vector3(0, CAMERA_HEIGHT_Y, CAMERA_DISTANCE_Z);
-                // Create a new vector for the camera's world position
-                const cameraWorldPosition = new THREE.Vector3();
-                // Apply the ship's world matrix to the local offset to get the camera's world position
-                // This makes the camera follow the ship's rotation and position dynamically
-                cameraWorldPosition.copy(cameraLocalOffset).applyMatrix4(ship.matrixWorld);
-                camera.position.copy(cameraWorldPosition);
-
-                // Make the camera look at the ship's position, or slightly ahead/above it
-                // The lookAt Y target is adjusted to make the camera look slightly downwards
-                camera.lookAt(ship.position.x, ship.position.y + CAMERA_LOOK_AT_Y_OFFSET, ship.position.z);
-            }
-
-            renderer.render(scene, camera); // Render the scene
-        }
-
-        // Handle window resizing
+        // --- Event Handlers ---
+        // Handles window resizing to keep the scene responsive
         function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight; // Update camera aspect ratio
+            camera.updateProjectionMatrix(); // Recalculate projection matrix
+            renderer.setSize(window.innerWidth, window.innerHeight); // Resize renderer
         }
 
-        // Initialize the game when the window loads
+        // Handles key presses for movement and steering
+        function onKeyDown(event) {
+            switch (event.code) {
+                case 'KeyW': keys.w = true; break;
+                case 'KeyS': keys.s = true; break;
+                case 'KeyA': keys.a = true; break;
+                case 'KeyD': keys.d = true; break;
+            }
+        }
+
+        // Handles key releases
+        function onKeyUp(event) {
+            switch (event.code) {
+                case 'KeyW': keys.w = false; break;
+                case 'KeyS': keys.s = false; break;
+                case 'KeyA': keys.a = false; break;
+                case 'KeyD': keys.d = false; break;
+            }
+        }
+
+        // --- Animation Loop ---
+        // Updates the physics world, ship position, and camera every frame
+        function animate() {
+            requestAnimationFrame(animate); // Request next animation frame
+
+            const deltaTime = 1 / 60; // Fixed time step for physics simulation (60 FPS)
+
+            // Update physics world
+            world.step(deltaTime);
+
+            // Ensure ship and its physics body are loaded before updating
+            if (ship && shipBody) {
+                // --- Hover Physics Implementation (Raycasting) ---
+                const raycaster = new THREE.Raycaster();
+                const down = new THREE.Vector3(0, -1, 0); // Ray points directly downwards
+                const shipWorldPosition = new THREE.Vector3();
+                ship.getWorldPosition(shipWorldPosition); // Get the ship's current world position
+
+                raycaster.set(shipWorldPosition, down); // Set raycaster origin and direction
+                // Intersect with all objects in the scene to find the ground
+                const intersects = raycaster.intersectObjects(scene.children, true);
+
+                let groundFound = false;
+                for (let i = 0; i < intersects.length; i++) {
+                    const intersect = intersects[i];
+                    // Check if the intersected object is part of a track segment's visual mesh
+                    // This is a simplified check. A more robust solution might involve specific collision layers.
+                    if (intersect.object.parent && intersect.object.parent.userData.physicsBody && trackBodies.includes(intersect.object.parent.userData.physicsBody)) {
+                        const distanceToGround = intersect.distance;
+
+                        // Apply upward hover force if too close to the ground
+                        if (distanceToGround < HOVER_HEIGHT) {
+                            // Force proportional to how much the ship has "penetrated" the hover height
+                            const hoverForce = new CANNON.Vec3(0, HOVER_FORCE_STRENGTH * (HOVER_HEIGHT - distanceToGround), 0);
+                            shipBody.applyForce(hoverForce, shipBody.position);
+                            groundFound = true;
+                        }
+                        // Apply damping to reduce vertical oscillations (bouncing)
+                        const dampingForce = new CANNON.Vec3(0, -shipBody.velocity.y * HOVER_DAMPING, 0);
+                        shipBody.applyForce(dampingForce, shipBody.position);
+                        break; // Only consider the closest ground intersection
+                    }
+                }
+
+                // --- Ship Movement and Steering ---
+                // Get the ship's current forward direction based on its rotation
+                const currentForward = new CANNON.Vec3();
+                shipBody.quaternion.vmult(new CANNON.Vec3(0, 0, 1), currentForward); // (0,0,1) is local Z-axis (forward)
+
+                if (keys.w) {
+                    // Forward acceleration
+                    // Check if current speed in forward direction is below max speed
+                    if (shipBody.velocity.dot(currentForward) < MAX_SPEED) {
+                        shipBody.applyForce(currentForward.scale(FORWARD_ACCELERATION), shipBody.position);
+                    }
+                } else if (keys.s) {
+                    // Braking/Reverse
+                    shipBody.applyForce(currentForward.scale(-BRAKE_DECELERATION), shipBody.position);
+                }
+
+                // Apply steering forces (torque around Y-axis)
+                if (keys.a) {
+                    // Turn left (positive torque around Y)
+                    shipBody.applyTorque(new CANNON.Vec3(0, STEERING_FORCE, 0));
+                }
+                if (keys.d) {
+                    // Turn right (negative torque around Y)
+                    shipBody.applyTorque(new CANNON.Vec3(0, -STEERING_FORCE, 0));
+                }
+
+                // Update Three.js ship's position and rotation from Cannon.js physics body
+                ship.position.copy(shipBody.position);
+                ship.quaternion.copy(shipBody.quaternion);
+
+                // --- Camera Follow ---
+                // Define the offset of the camera relative to the ship
+                const cameraOffset = new THREE.Vector3(0, 5, -15); // x, y (above), z (behind)
+                // Apply the ship's current rotation to the camera offset
+                cameraOffset.applyQuaternion(ship.quaternion);
+                // Set camera position to ship's position plus the rotated offset
+                camera.position.copy(ship.position).add(cameraOffset);
+                camera.lookAt(ship.position); // Make the camera look directly at the ship
+
+                // Update ship speed display in the info box
+                const speed = shipBody.velocity.length(); // Get magnitude of velocity vector
+                document.getElementById('shipSpeed').innerText = speed.toFixed(2);
+            }
+
+            // Render the scene with the camera
+            renderer.render(scene, camera);
+        }
+
+        // --- Start Game on Window Load ---
+        // Ensures all resources are loaded before starting the animation loop
         window.onload = function () {
-            init();
-        };
+            init(); // Initialize the scene and physics
+            animate(); // Start the animation loop
+        }
     </script>
 </body>
 </html>
