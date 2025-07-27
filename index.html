@@ -77,6 +77,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- GLTFLoader for loading .glb models -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- DRACOLoader for Draco compressed GLB models -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
     <!-- Cannon.js for 3D physics -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
 
@@ -165,6 +167,12 @@
         // Loads the GLB models for the ship and track segment
         function loadModels() {
             const loader = new THREE.GLTFLoader();
+
+            // Setup DRACOLoader for GLTFLoader
+            const dracoLoader = new THREE.DRACOLoader();
+            // Set the path to the Draco decoder libraries
+            dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+            loader.setDRACOLoader(dracoLoader);
 
             // Load Ship Model
             loader.load(
