@@ -6,6 +6,8 @@
     <title>Hover Game 3D Scene</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- Include DRACOLoader script for compressed GLB models -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Inter', sans-serif; }
         canvas { display: block; }
@@ -83,6 +85,11 @@
         // Function to load GLB models
         function loadModels() {
             const loader = new THREE.GLTFLoader();
+
+            // Create a DRACOLoader instance and set its decoder path
+            const dracoLoader = new THREE.DRACOLoader();
+            dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/'); // Path to Draco decoder files
+            loader.setDRACOLoader(dracoLoader); // Provide DRACOLoader to GLTFLoader
 
             // Load the ship model
             loader.load(
