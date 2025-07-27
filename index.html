@@ -61,6 +61,13 @@
             d: false
         };
 
+        // Function to handle window resizing - Moved to be defined earlier
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
         function init() {
             // Create the scene
             scene = new THREE.Scene();
