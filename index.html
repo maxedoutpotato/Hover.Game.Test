@@ -92,7 +92,7 @@
 
         // --- Physics Parameters ---
         // Adjusted HOVER_HEIGHT to be higher
-        const HOVER_HEIGHT = 10.0; // Desired height above ground for hovering (increased 5x)
+        const HOVER_HEIGHT = 20.0; // Desired height above ground for hovering (increased further)
         const HOVER_FORCE_STRENGTH = 100; // Strength of the upward hover force
         const HOVER_DAMPING = 0.9; // Damping to reduce vertical oscillations
         const SHIP_MASS = 100; // Mass of the ship for physics calculations
@@ -182,7 +182,8 @@
                     ship = gltf.scene; // Get the scene from the loaded GLTF
                     // Scaled up the ship 5 times
                     ship.scale.set(2.5, 2.5, 2.5); // Scale up the ship to a suitable size
-                    ship.position.set(0, HOVER_HEIGHT, 0); // Initial position slightly above ground
+                    // Initial position explicitly set higher than HOVER_HEIGHT to prevent initial "shot into air"
+                    ship.position.set(0, HOVER_HEIGHT + 5, 0);
                     scene.add(ship); // Add ship to the Three.js scene
 
                     // Create Cannon.js body for the ship
@@ -268,7 +269,7 @@
         // Handles key releases
         function onKeyUp(event) {
             switch (event.code) {
-                case 'KeyW': keys.s = false; break;
+                case 'KeyW': keys.w = false; break; // Corrected typo: should be keys.w = false;
                 case 'KeyS': keys.s = false; break;
                 case 'KeyA': keys.a = false; break;
                 case 'KeyD': keys.d = false; break;
