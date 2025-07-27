@@ -97,7 +97,7 @@
                 function (gltf) {
                     ship = gltf.scene;
                     ship.scale.set(0.5, 0.5, 0.5); // Scale down the ship
-                    ship.position.set(0, 0.1, 0); // Position the ship lower, but above the track
+                    ship.position.set(0, 0.05, 0); // Position the ship lower, but above the track
                     ship.rotation.y = Math.PI; // Rotate ship 180 degrees along y-axis
                     scene.add(ship);
 
@@ -120,7 +120,7 @@
                     trackSegment.scale.set(0.5, 0.5, 0.5); // Scale down the track
 
                     const numberOfSegments = 20;
-                    const segmentLength = 1; // Approximate length of the track segment along Z-axis, reduced 10 times
+                    const segmentLength = 1.05; // Approximate length of the track segment along Z-axis, slightly increased to prevent overlap
 
                     for (let i = 0; i < numberOfSegments; i++) {
                         const clonedSegment = trackSegment.clone();
