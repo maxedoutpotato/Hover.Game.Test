@@ -94,8 +94,8 @@
         // --- Physics Parameters ---
         // Adjusted HOVER_HEIGHT based on track surface
         let HOVER_HEIGHT = 0; // This will be calculated dynamically based on track's top surface
-        const HOVER_DISTANCE_ABOVE_TRACK = 5.0; // Desired distance ship hovers above the track surface
-        const HOVER_FORCE_STRENGTH = 500; // Increased strength of the upward hover force for stability
+        const HOVER_DISTANCE_ABOVE_TRACK = 7.0; // Desired distance ship hovers above the track surface (increased slightly)
+        const HOVER_FORCE_STRENGTH = 1000; // Increased strength of the upward hover force for stability
         const HOVER_DAMPING = 0.9; // Damping to reduce vertical oscillations
         const SHIP_MASS = 100; // Mass of the ship for physics calculations
         const FORWARD_ACCELERATION = 500; // Increased force applied for forward movement
@@ -197,8 +197,8 @@
                     const NUM_SEGMENTS = 20; // Number of track segments to create
                     for (let i = 0; i < NUM_SEGMENTS; i++) {
                         const segmentInstance = trackSegment.clone(); // Create a clone of the original segment
-                        // Position segments sequentially along the Z-axis, reducing distance by 5 times
-                        segmentInstance.position.z = i * (trackLength * trackSegment.scale.z / 5);
+                        // Position segments sequentially along the Z-axis, directly end-to-end
+                        segmentInstance.position.z = i * (trackLength * trackSegment.scale.z);
                         scene.add(segmentInstance); // Add segment instance to the Three.js scene
 
                         // Create Cannon.js bodies for the track segments
